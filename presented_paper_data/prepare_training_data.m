@@ -1,10 +1,24 @@
-% clear all
-% close all
+clear all
+close all
 % load('SAXdataAll.mat');
-data_1=new_dat_final(1);
-u=cell2mat(data_1);
-u_init=u(:,:,1);
-imagesc(u_init)
+load('smallData.mat');
 
-training_set=new_dat_final(1:2000);
-test_set=new_dat_final(2001:2268);
+%display the first slice through each of the 5 images
+for i = 1:5
+    data(i)=new_dat_final(i);
+    data_double=cell2mat(data(i));
+    u = data_double;
+    u_init=u(:,:,1);
+    figure
+    imagesc(u_init);
+end
+    
+    
+    
+% data_1=new_dat_final(1);
+% u=cell2mat(data_1);
+% u_init=u(:,:,1);
+% imagesc(u_init)
+
+% training_set=new_dat_final(1:2000);
+% test_set=new_dat_final(2001:2268);

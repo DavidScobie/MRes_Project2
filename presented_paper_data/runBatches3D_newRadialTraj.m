@@ -1,13 +1,13 @@
 %load 'smallData.mat'
-addpath 'gridder'
+% addpath 'gridder'
 acc_fact    = 13;
 
-% nVolumes = size(new_dat_final, 2)
+nVolumes = size(new_dat_final, 2)
 nVolumes = size(data_1, 2)
 
  for(b=1:nVolumes)
 
-%         images = new_dat_final{1, b};
+        images = new_dat_final{1, b};
         images = data_1{1, b};
         disp(['TEST; b = ', int2str(b), ' , nFrames = ', int2str(size(images, 3))]);
  
