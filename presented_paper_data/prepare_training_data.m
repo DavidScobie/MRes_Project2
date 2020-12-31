@@ -1,6 +1,6 @@
 % clear all
 % close all
-% load('SAXdataAll.mat');
+load('SAXdataAll.mat');
 load('smallData.mat');
 
 %display the first slice through each of the 5 images
@@ -33,5 +33,5 @@ end
 %Splitting up training and test data sets
 % training_set=new_dat_final(1:2000);
 % test_set=new_dat_final(2001:2268);
-
+new_dat_final=new_dat_final(1:2000);
 %

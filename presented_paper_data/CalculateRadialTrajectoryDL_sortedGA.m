@@ -63,20 +63,20 @@ M = phs_len; % number of frames
    p = colormap(hsv(cols)) 
  
    for (phs = 1)% : phs_len)
-       figure;
+%        figure;
        pos = mod(phs,cols);
        if(pos == 0) pos = 1; end
             
        curp=p(pos, :);
-       for(i=1:nRadialSpokes_ACC)
-           hold on;plot(trajectory((phs-1)*nRadialSpokes_ACC*col_len + (col_len*(i-1))+1: (phs-1)*nRadialSpokes_ACC*col_len + (col_len*i),1), trajectory((phs-1)*nRadialSpokes_ACC*col_len + (col_len*(i-1))+1: (phs-1)*nRadialSpokes_ACC*col_len + (col_len*i), 2), 'color', p(pos, :));
-       end
-       pause(0.1);
+%        for(i=1:nRadialSpokes_ACC)
+%            hold on;plot(trajectory((phs-1)*nRadialSpokes_ACC*col_len + (col_len*(i-1))+1: (phs-1)*nRadialSpokes_ACC*col_len + (col_len*i),1), trajectory((phs-1)*nRadialSpokes_ACC*col_len + (col_len*(i-1))+1: (phs-1)*nRadialSpokes_ACC*col_len + (col_len*i), 2), 'color', p(pos, :));
+%        end
+%        pause(0.1);
            
 %       F(phs) = getframe();
    end
     
-   title('sortGA')
+%    title('sortGA')
 %    figure;
 %   movie(F)
         

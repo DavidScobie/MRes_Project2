@@ -9,9 +9,9 @@ nVolumes = size(new_dat_final, 2)
 
         images = new_dat_final{1, b};
 %         images = data_1{1, b};
-        disp(['TEST; b = ', int2str(b), ' , nFrames = ', int2str(size(images, 3))]);
+%         disp(['TEST; b = ', int2str(b), ' , nFrames = ', int2str(size(images, 3))]);
  
-        disp('tiny golden angle rotating trajectory');
+%         disp('tiny golden angle rotating trajectory');
 %        tGA = abs(SimulatingUndersampledRadialData(images, acc_fact, true, true, true));       
 %        divGS = abs(SimulatingUndersampledRadialData_dividedGS(images, acc_fact));
         
@@ -22,7 +22,7 @@ nVolumes = size(new_dat_final, 2)
 
  end
  
-tt = sum(sum(sum(sum(isnan(images_truth), 4), 3), 2), 1)
+tt = sum(sum(sum(sum(isnan(images_truth), 4), 3), 2), 1);
 if(tt<0)
     disp('testData_truth ERROR contains NAN');
     return;
@@ -37,7 +37,7 @@ end
 %     disp('testData_tGA_rot ERROR contains NAN');
 %     return;
 % end
-tt = sum(sum(sum(sum(isnan(images_sortGA), 4), 3), 2), 1)
+tt = sum(sum(sum(sum(isnan(images_sortGA), 4), 3), 2), 1);
 if(tt<0)
     disp('testData_tGA_rot ERROR contains NAN');
     return;
