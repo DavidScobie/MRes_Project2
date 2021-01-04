@@ -31,8 +31,8 @@ acc_fact = 13;
 % skip up to here is doing sampling in dlex
 %%
 %Load the data in
-load('Test_Data_truth268.mat')
-load('Test_Data_sortGA268.mat')
+load('TrainData_truth2000.mat')
+load('TrainData_sortGA2000.mat')
 
 %Find how many images there are
 image_dims=size(images_truth);
@@ -43,8 +43,8 @@ data_truth0=images_truth;
 data_Undersampled0=images_sortGA;
 
 %Initialise empty cell arrays
-data_truth=cell(1,268);
-data_Undersampled=cell(1,268);
+data_truth=cell(1,num_samples);
+data_Undersampled=cell(1,num_samples);
 
 %Turn the double arrays into cell arrays
 for i = 1:num_samples
@@ -63,13 +63,14 @@ end
 %
 s = struct();
 for(i=1:num_samples) 
-    s(i).y = data_truth{i};
-    s(i).x = data_Undersampled{i};  
+    s(i).y = cell2mat(data_truth{i});
+    s(i).x = cell2mat(data_Undersampled{i});  
 end
 %%
 
 % Use dlexsave to write to correct format into the ‘data’ folder
 
-save_dir = '/Users/jennifer/dlex/JAStest1/data/cine/'
+% save_dir = '/Users/jennifer/dlex/JAStest1/data/cine/'
+save_dir = 'C:/PHD/MRes_project/mapped_docker_files/ml/data/cine/'
 
-dlexsave(save_dir, s, 'prefixes', 'dataSet1_');
+dlexsave(save_dir, s, 'prefixes', 'dataSet3_');
