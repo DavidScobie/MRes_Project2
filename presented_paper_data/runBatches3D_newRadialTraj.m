@@ -43,9 +43,9 @@ if(tt<0)
     return;
 end
 
-save('TrainData_truth',  'images_truth');
+save('Test_Data_truth_268',  'images_truth');
 %save('TrainData_tGA',    'images_tGA');
-save('TrainData_sortGA', 'images_sortGA');
+save('Test_Data_sortGA_268', 'images_sortGA');
 %save('TrainData_divGS',  'images_divGS');
 
 return;

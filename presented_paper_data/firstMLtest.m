@@ -30,52 +30,43 @@ acc_fact = 13;
  
 % skip up to here is doing sampling in dlex
 %%
+%Load the data in
 load('TestData_truth_268.mat')
 load('TestData_sortGA_268.mat')
 
-num_samples=268
+%Find how many images there are
+image_dims=size(images_truth);
+num_samples=image_dims(4);
 
+%Reassign arrays
 data_truth0=images_truth;
 data_Undersampled0=images_sortGA;
 
+%Initialise empty cell arrays
 data_truth=cell(1,268);
 data_Undersampled=cell(1,268);
 
-for i = 1:268
-    data_truth{i} = mat2cell(data_truth0(:,:,:,i),128,128,20);
-    data_Undersampled{i} = mat2cell(data_Undersampled0(:,:,:,i),128,128,20);
+%Turn the double arrays into cell arrays
+for i = 1:num_samples
+    data_truth{i} = mat2cell(data_truth0(:,:,:,i),image_dims(1),image_dims(2),image_dims(3));
+    data_Undersampled{i} = mat2cell(data_Undersampled0(:,:,:,i),image_dims(1),image_dims(2),image_dims(3));
 end
 
 % Permute to correct image dimensions
 
 for(i=1:num_samples)
-    data_truth{i}           = mat2cell(permute(cell2mat(data_truth{i}),        [3 1 2]),20,128,128);
-    data_Undersampled{i}    = mat2cell(permute(cell2mat(data_Undersampled{i}), [3 1 2]),20,128,128);
+    data_truth{i}           = mat2cell(permute(cell2mat(data_truth{i}),        [3 1 2]),image_dims(3),image_dims(1),image_dims(2));
+    data_Undersampled{i}    = mat2cell(permute(cell2mat(data_Undersampled{i}), [3 1 2]),image_dims(3),image_dims(1),image_dims(2));
 end
-
-% permuted_truth=zeros(20,128,128,2000);
-% permuted_Undersampled=zeros(20,128,128,2000);
-
-% for(i=1:num_samples)
-%     data_truth(:,:,:,i)           = permute(data_truth(:,:,:,i) ,        [3 1 2]);
-%     data_Undersampled(:,:,:,i)     = permute(data_Undersampled(:,:,:,i) , [3 1 2]);
-%     disp(i)
-% end
-
-% for(i=1:num_samples)
-%     permuted_truth(:,:,:,i)           = permute(data_truth(:,:,:,i) ,        [3 1 2]);
-%     permuted_Undersampled(:,:,:,i)     = permute(data_Undersampled(:,:,:,i) , [3 1 2]);
-% end
 
 % Convert data to struct
 
 s = struct();
 for(i=1:num_samples) 
     s(i).y = data_truth{i};
-    s(i).x = data_Undersampled{i};
-%     s(i).y = permuted_truth(:,:,:,i);
-%     s(i).x = permuted_Undersampled(:,:,:,i);    
+    s(i).x = data_Undersampled{i};  
 end
+
 
 % Use dlexsave to write to correct format into the ‘data’ folder
 
