@@ -60,7 +60,7 @@ for(i=1:num_samples)
 end
 
 % Convert data to struct
-
+%
 s = struct();
 for(i=1:num_samples) 
     s(i).y = data_truth{i};
