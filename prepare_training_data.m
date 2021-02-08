@@ -1,8 +1,12 @@
 % clear all
 % close all
-% load('SAXdataAll.mat');
+load('SAXdataAll.mat');
 load('smallData.mat');
 
+data_double = [];
+for i = 1:2268
+    data_double(:,:,:,i) = cell2mat(new_dat_final(i));
+end
 %display the first slice through each of the 5 images
 % for i = 1:5
 %     data(i)=new_dat_final(i);
