@@ -1,4 +1,5 @@
-%load 'smallData.mat'
+addpath C:\PHD\MRes_project\ML_work\paper_data_mat_files
+load 'smallData.mat'
 % addpath 'gridder'
 acc_fact    = 13;
 
