@@ -1,5 +1,14 @@
 function [image_out] = SimulatingUndersampledRadialData_sortedGA(image_in, acc_fact)
 
+    newMatrix = 192;
+    nFrames = size(image_in, 3)
+    [x,y,z] = meshgrid(1:newMatrix,1:newMatrix,1:nFrames);
+    [x1,y1,z1] = meshgrid(1:newMatrix,1:newMatrix, 1:(nFrames-1)/19:nFrames);
+
+    if(size(x1, 3) ~= 20)
+        disp('ERROR');
+    end
+    image_in = [x1,y1,z1];
 %close all;
 % addpath 'gridder'
 

@@ -5,7 +5,7 @@ addpath C:\PHD\MRes_project\ML_work\dlex_framework\dlex\matlab
 addpath C:\PHD\MRes_project\ML_work\gridder
 
 %Loading data in
-val_data=dlexload('C:\PHD\MRes_project\ML_work\mapped_docker_files\ml\results\same_as_paper\e_150_192_siz_in_and_out_bs4\pred\val');
+val_data=dlexload('C:\PHD\MRes_project\ML_work\mapped_docker_files\ml\results\same_as_paper\e_150_192_siz_in_and_out_bs4_norm\pred\val');
 %%
 %Y IMAGES
 for i =1:200    
@@ -69,3 +69,4 @@ for i =1:200
     ssimval(i) = ssim(predImagesOut1,truthImagesOut1);
 end
 avg_ssim = (sum(ssimval))./size(ssimval,2);
+disp(['ssim: ',num2str(avg_ssim)])
