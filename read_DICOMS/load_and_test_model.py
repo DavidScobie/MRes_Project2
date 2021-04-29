@@ -52,6 +52,8 @@ plt.imshow(test_pred[3,5,:,:], cmap='gray')
 low_res_np = tf.make_ndarray(tf.make_tensor_proto(low_res))
 print(low_res_np)
 
+PlotUtils.plotVid(np.squeeze(low_res_np[1,:,:,:]),vmin=0,vmax=1,axis=0)
+
 #save the matrices to files
 sio.savemat('DICOM_and_reconstruction.mat',{'low_res_DICOM':tf.make_ndarray(tf.make_tensor_proto(low_res)), 'reconstruction':tf.make_ndarray(tf.make_tensor_proto(test_pred))}) #you can save as many arrays as you want
 
