@@ -5,7 +5,7 @@ addpath C:\PHD\MRes_project\ML_work\dlex_framework\dlex\matlab
 %%Checking x and y outputs from the model (in the cache folder)
 
 %Loading data in
-data=dlexload('C:\PHD\MRes_project\ML_work\mapped_docker_files\ml\results\size_192\final_e_150_siz_192_bs4_patch\pred\val');
+data=dlexload('C:\PHD\MRes_project\ML_work\mapped_docker_files\ml\results\size_192\rdssim_L2_50\fi_optimised_rdssim_unet_150_epo_0.89\pred\val');
 
 %Collecting data for 1st validation image
 data1=data(1);

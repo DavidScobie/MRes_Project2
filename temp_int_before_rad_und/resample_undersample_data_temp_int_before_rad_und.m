@@ -53,8 +53,9 @@ startY = 1;
 endX = 192;
 endY = 192;
 %% JAS start
-truthImagesOut1 = double(truthImagesIn(startY:endY,startX:endX,:));
-norm_dat = interp3(x,y,z, (truthImagesOut1),x1,y1,z1);
+% norm_dat = truthImagesOut1
+norm_dat = double(truthImagesIn(startY:endY,startX:endX,:));
+% norm_dat = interp3(x,y,z, (truthImagesOut1),x1,y1,z1);
 
 min_norm_dat = min(norm_dat(:));
 max_norm_dat = max(norm_dat(:));
@@ -63,10 +64,10 @@ truthImagesOut = (norm_dat - min_norm_dat)/(max_norm_dat - min_norm_dat);
 truthImagesOut = cast(truthImagesOut, 'single');
 
 %% JAS end
-resampledImagesOut1a = double(resampledImagesIn1(startY:endY,startX:endX,:));
+norm_dat = double(resampledImagesIn1(startY:endY,startX:endX,:));
 %% JAS start
 %norm_dat = interpft(resampledImagesOut1a, 20, 3);
-norm_dat = interp3(x,y,z, (resampledImagesOut1a),x1,y1,z1);
+% norm_dat = interp3(x,y,z, (resampledImagesOut1a),x1,y1,z1);
 min_norm_dat = min(norm_dat(:));
 max_norm_dat = max(norm_dat(:));
 resampledImagesOut1 = (norm_dat - min_norm_dat)/(max_norm_dat - min_norm_dat);

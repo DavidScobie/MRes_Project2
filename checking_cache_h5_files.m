@@ -5,7 +5,7 @@ addpath C:\PHD\MRes_project\ML_work\dlex_framework\dlex\matlab
 %%Checking x and y outputs from the model (in the cache folder)
 
 %Loading data in
-data=dlexload('C:\PHD\MRes_project\ML_work\mapped_docker_files\ml\data\cine_large_training_192size\cache');
+data=dlexload('C:\PHD\MRes_project\ML_work\mapped_docker_files\ml\data\192_MAT_preproc_same_as_pap\cache');
 
 %Collecting data for 1st validation image
 data1=data(1);

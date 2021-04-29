@@ -1,7 +1,7 @@
 function [truthImagesOut, resampledImagesOut1, resampledImagesOut2, resampledImagesOut3, resampledImagesOut4] = resample_undersample_data(truthImagesIn, resampledImagesIn1, resampledImagesIn2, resampledImagesIn3, resampledImagesIn4)
 
 sizeIn = nargin;
-newMatrix = 128;
+newMatrix = 192;
 
 origMatrix = size(truthImagesIn, 1);
 
@@ -49,7 +49,9 @@ if(size(x1, 3) ~= 20)
 end
 
 %% JAS start
+
 truthImagesOut1 = double(truthImagesIn(startY:endY,startX:endX,:));
+
 norm_dat = interp3(x,y,z, (truthImagesOut1),x1,y1,z1);
 
 min_norm_dat = min(norm_dat(:));

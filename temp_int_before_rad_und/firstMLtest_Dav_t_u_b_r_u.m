@@ -5,14 +5,15 @@
 addpath '/PHD/MRes_project/ML_work/paper_data_mat_files'
 addpath '/PHD/MRes_project/ML_work'
 addpath '/PHD/MRes_project/ML_work/gridder'
-
-load('SAXdataAll.mat')
+addpath 'D:/MRes_project/ML_work/paper_data_mat_files'
+% load('D:\MRes_project\ML_work\paper_data_mat_files\SAXdataAll.mat');
+% load('SAXdataAll.mat')
 num_samples = length(new_dat_final)
 
 % here i just forced it to only use the firstt 250
-if(num_samples > 250)  
-    num_samples = 250;
-end
+% if(num_samples > 250)  
+%     num_samples = 250;
+% end
 
 %% 
 % Either you can do your MRI experiemnt (in this case undersampling and
@@ -25,10 +26,28 @@ addpath '/Users/jennifer/Documents/work/Radial/DL'
 %this is the same as from the 'runBatches3D_newRadialTraj' file which i sent you before
 acc_fact = 13;
 
- for(i=1:num_samples)
-        simulated_sortGA = abs(SimulatingUndersampledRadialData_sortedGA_t_i_before_r_u(new_dat_final{i}, acc_fact));
-             
-        [data_truth{i}, data_UnderSampled{i}] = resample_undersample_data_temp_int_before_rad_und(new_dat_final{i}, simulated_sortGA);
+%  for(i=1:num_samples)
+ for(i=1:5)
+     
+        %temporal interpolation
+         newMatrix = 192;
+        nFrames = size(new_dat_final{i}, 3)
+        [x,y,z] = meshgrid(1:newMatrix,1:newMatrix,1:nFrames);
+        [x1,y1,z1] = meshgrid(1:newMatrix,1:newMatrix, 1:(nFrames-1)/19:nFrames);
+        disp([x1,y1,z1])
+        if(size(x1, 3) ~= 20)
+            disp('ERROR');
+        end
+        
+        image_in = interp3(x,y,z, (new_dat_final{i}),x1,y1,z1);
+        
+        %radial undersampling truth to give undersampled
+        simulated_sortGA = abs(SimulatingUndersampledRadialData_sortedGA_t_i_before_r_u(image_in, acc_fact));
+        
+        %Normalising both truth and undersampled
+        [data_truth{i}, data_UnderSampled{i}] = resample_undersample_data_temp_int_before_rad_und(image_in, simulated_sortGA);
+        
+        disp('hi')
  end
  
 % skip up to here is doing sampling in dlex
