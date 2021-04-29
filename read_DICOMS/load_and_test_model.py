@@ -5,6 +5,8 @@ import dlex
 import h5py
 from tensorflow.keras.models import load_model
 import matplotlib.pyplot as plt
+import PlotUtils
+from PlotUtils import *
 
 # load model
 model = load_model('model.h5')
@@ -25,36 +27,54 @@ bigger_dset = tf.expand_dims(bigger_dset, axis=4)
 
 low_res = tf.squeeze(tf.image.convert_image_dtype(bigger_dset, tf.float32))
 plt.figure(0)
-plt.imshow(low_res[0,:,:])
+plt.imshow(low_res[7,:,:], cmap='gray')
 
 y_pred = model.predict(bigger_dset)
 print(y_pred.shape)
 
 test_pred = tf.squeeze(tf.image.convert_image_dtype(y_pred, tf.float32))
+print(low_res)
 plt.figure(1)
-plt.imshow(test_pred[0,:,:])
+plt.imshow(test_pred[7,:,:], cmap='gray')
+
+
+# PlotUtils.plotVid(img,vmin=0,vmax=1,axis=0)
+
+# kev = open("low_res_data.csv","w+")
+
+# # save numpy array as csv file
+# from numpy import asarray
+# from numpy import savetxt
+# # define data
+# data = asarray([[0, 1, 2, 3, 4, 5, 6, 7, 8, 9]])
+# # save to csv file
+# savetxt('low_res_data.csv', low_res, delimiter=',')
+
+# def iter_3D(low_res):
+#     for i in range(low_res.shape[0]):
+#         for j in range(low_res.shape[1]):
+#             for k in range(low_res.shape[2]):
+#                 yield i, j, k
+
+# l = []
+
+# for i, j, k in iter_3D(low_res):
+#     l.append('%d %d %d %d' %(str(indices_x(i, j, k)), str(indices_y(i, j, k)), str(indices_z(i, j, k)), str(low_res[i, j, k])))
+
+# with open('file_1.csv', 'w') as f:
+#     f.write("\n".join(l))
+
+# import numpy as np
+# import pandas as pd
+# from pandas import Panel
+# # create an example array
+# a = np.arange(24).reshape([2,3,4])
+# # convert it to stacked format using Pandas
+# stacked = pd.Panel(low_res.swapaxes(1,2)).to_frame().stack().reset_index()
+# stacked.columns = ['x', 'y', 'z', 'value']
+# # save to disk
+# stacked.to_csv('stacked.csv', index=False)
 
 plt.show()
 
-# test_indices = range(191,192)
-
-# def my_test_generator(subject_indices):
-#     for iSbj in subject_indices:
-#         # idx_frame_indics = range(num_subjects)
-#         relevant_keys = [s for s in keys if 'frame_%04d_' % (iSbj) in s]
-#         # idx_frame_indics = range(len(relevant_keys))
-#         idx_frame_indics= range(4,5)
-#         for idx_frame in idx_frame_indics:
-#             f_dataset = 'frame_%04d_%03d' % (iSbj, idx_frame)
-#             frame = tf.math.divide(tf.keras.utils.HDF5Matrix(filename, f_dataset), 255)
-#             yield(tf.expand_dims(frame, axis=2))
-
-# test_dataset = tf.data.Dataset.from_generator(generator = lambda: my_test_generator(subject_indices=test_indices), 
-#                                          output_types = (tf.float32),
-#                                          output_shapes = (frame_size))
-
-# test_batch = test_dataset.shuffle(buffer_size=1024).batch(1)
-
-# set1 = 
-# model.predict('d1_00002.h5')
 
