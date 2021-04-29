@@ -7,6 +7,8 @@ from tensorflow.keras.models import load_model
 import matplotlib.pyplot as plt
 import PlotUtils
 from PlotUtils import *
+import scipy.io as sio
+
 
 # load model
 model = load_model('model.h5')
@@ -47,6 +49,11 @@ plt.imshow(test_pred[3,5,:,:], cmap='gray')
 
 
 # PlotUtils.plotVid(img,vmin=0,vmax=1,axis=0)
+low_res_np = tf.make_ndarray(tf.make_tensor_proto(low_res))
+print(low_res_np)
+
+#save the matrices to files
+sio.savemat('DICOM_and_reconstruction.mat',{'low_res_DICOM':tf.make_ndarray(tf.make_tensor_proto(low_res)), 'reconstruction':tf.make_ndarray(tf.make_tensor_proto(test_pred))}) #you can save as many arrays as you want
 
 plt.show()
 
