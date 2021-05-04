@@ -63,5 +63,5 @@ for(i=1:12)
     s(i).x = low_res_data(:,:,:,i);
 end
  
-save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS';
+save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/low_res_data';
 dlexsave(save_dir, s, 'prefixes', 'd1');
