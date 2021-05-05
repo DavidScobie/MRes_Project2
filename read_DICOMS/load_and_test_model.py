@@ -11,7 +11,7 @@ import scipy.io as sio
 
 # load model
 # model = load_model('./old_network/model.h5')
-model = load_model('./model.h5')
+model = load_model('./fi_e_150_siz_192_MAT_preproc/model.h5')
 # summarize model.
 model.summary()
 
@@ -49,7 +49,9 @@ low_res_np = tf.make_ndarray(tf.make_tensor_proto(low_res))
 test_pred_np = tf.make_ndarray(tf.make_tensor_proto(test_pred))
 
 #Plot the reconstructed frames as an animation
-PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0,savepath='rdssim_network')
+PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0,savepath='.\MAT_preproc_same_as_pap')
+
+#savepath example
 # PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0,savepath='.\old_network\original')
 
 #save the matrices to files

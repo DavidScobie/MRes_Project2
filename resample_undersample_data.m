@@ -1,7 +1,7 @@
 function [truthImagesOut, resampledImagesOut1, resampledImagesOut2, resampledImagesOut3, resampledImagesOut4] = resample_undersample_data(truthImagesIn, resampledImagesIn1, resampledImagesIn2, resampledImagesIn3, resampledImagesIn4)
 
 sizeIn = nargin;
-newMatrix = 192;
+newMatrix = 128;
 
 origMatrix = size(truthImagesIn, 1);
 
