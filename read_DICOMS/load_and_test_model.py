@@ -11,17 +11,17 @@ import scipy.io as sio
 
 # load model
 # model = load_model('./old_network/model.h5')
-model = load_model('./fi_e_150_siz_192_MAT_preproc/model.h5')
+model = load_model('./fi_paper_redo_7_5_21/model.h5')
 # summarize model.
 model.summary()
 
 #Read in the first dataset of 12
-fstart = h5py.File('./low_res_data/d1_00001.h5','r')['x']
+fstart = h5py.File('./low_res_data_128/d1_00001.h5','r')['x']
 fstart = tf.expand_dims(fstart, axis=3)
 
 #Read in and concatenate the next 11 datasets
 for i in range(11):
-    filepath = './low_res_data/d1_%05d.h5' % (i+2)
+    filepath = './low_res_data_128/d1_%05d.h5' % (i+2)
     fi = h5py.File(filepath,'r')['x']
     fi = tf.expand_dims(fi, axis=3)
     fnext = tf.concat([fstart,fi], axis=3)
@@ -49,13 +49,13 @@ low_res_np = tf.make_ndarray(tf.make_tensor_proto(low_res))
 test_pred_np = tf.make_ndarray(tf.make_tensor_proto(test_pred))
 
 #Plot the reconstructed frames as an animation
-PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0,savepath='.\MAT_preproc_same_as_pap')
+PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0,savepath='.\model_128_same_as_pap')
 
 #savepath example
 # PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0,savepath='.\old_network\original')
 
 #save the matrices to files
-sio.savemat('DICOM_and_reconstruction.mat',{'low_res_DICOM':low_res_np, 'reconstruction':test_pred_np}) #you can save as many arrays as you want
+# sio.savemat('DICOM_and_reconstruction.mat',{'low_res_DICOM':low_res_np, 'reconstruction':test_pred_np}) #you can save as many arrays as you want
 
 plt.show()
 
