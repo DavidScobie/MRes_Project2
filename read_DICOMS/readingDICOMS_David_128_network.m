@@ -43,10 +43,6 @@ for(s=1:nGriddedSlices)
     
     nFrames = size(resampledImagesOut1, 3)
 
-%     [x,y,z] = meshgrid(1:192,1:192,1:nFrames);
-%     [x1,y1,z1] = meshgrid(1:192,1:192, 1:(nFrames-1)/19:nFrames);
-%     [x,y,z] = meshgrid(33:160,33:160,1:nFrames);
-%     [x1,y1,z1] = meshgrid(33:160,33:160, 1:(nFrames-1)/19:nFrames);
     [x,y,z] = meshgrid(1:128,1:128,1:nFrames);
     [x1,y1,z1] = meshgrid(1:128,1:128, 1:(nFrames-1)/19:nFrames);
 
@@ -72,6 +68,6 @@ for(i=1:12)
 end
  
 save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/low_res_data_128';
-dlexsave(save_dir, s, 'prefixes', 'd1');
+% dlexsave(save_dir, s, 'prefixes', 'd1');
 
 
