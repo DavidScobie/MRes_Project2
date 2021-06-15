@@ -35,13 +35,13 @@ if(bIfPreProcessingInMATALB == true)
             simulated_sortGA = abs(SimulatingUndersampledRadialData_sortedGA(new_dat_final{i}, acc_fact));
             
             %If you want 192 size matrix use this
-            [data_truth{i}, data_UnderSampled{i}] = resamp_undersamp_dat_192(new_dat_final{i}, simulated_sortGA);
+%             [data_truth{i}, data_UnderSampled{i}] = resamp_undersamp_dat_192(new_dat_final{i}, simulated_sortGA);
             
             %If you just want to do the last 268 sets use
 %               [data_truth{i-2000}, data_UnderSampled{i-2000}] = resamp_undersamp_dat_192(new_dat_final{i}, simulated_sortGA);
             
             %If you want 128 size matrix (cropped) use this
-%             [data_truth{i}, data_UnderSampled{i}] = resample_undersample_data(new_dat_final{i}, simulated_sortGA);
+            [data_truth{i}, data_UnderSampled{i}] = resample_undersample_data(new_dat_final{i}, simulated_sortGA);
             disp(i)
      end
 

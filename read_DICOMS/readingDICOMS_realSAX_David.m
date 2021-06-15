@@ -8,8 +8,8 @@ folders = dir([tot_folder, '/__*'])
 nSlices = size(folders, 1)
 
 counter= 1;
-for(sl=1:2:nSlices) % we only take altrnate ones as the even ones are the ML result
-    folder_name = [folders(sl).folder, '/', folders(sl).name]
+for(s=1:2:nSlices) % we only take altrnate ones as the even ones are the ML result
+    folder_name = [folders(s).folder, '/', folders(s).name]
     
     images_names = dir([folder_name, '/*.IMA']);
     nImages = size(images_names, 1)
@@ -34,9 +34,9 @@ end
 nGriddedSlices = size(allData, 2)
 
 
-for(sl=1:nGriddedSlices)
+for(s=1:nGriddedSlices)
     
-    resampledImagesOut1= allData{sl};
+    resampledImagesOut1= allData{s};
     nFrames = size(resampledImagesOut1, 3)
 
     [x,y,z] = meshgrid(1:192,1:192,1:nFrames);
@@ -47,7 +47,7 @@ for(sl=1:nGriddedSlices)
     end
 
     norm_dat = interp3(x,y,z, double(resampledImagesOut1),x1,y1,z1);
-    resampledImagesOut(:,:,:,sl) = (norm_dat - min(norm_dat(:)))/(max(norm_dat(:)) - min(norm_dat(:)));
+    resampledImagesOut(:,:,:,s) = (norm_dat - min(norm_dat(:)))/(max(norm_dat(:)) - min(norm_dat(:)));
 end
 
 %% Saving the low resolution data
@@ -57,21 +57,22 @@ end
  low_res_data           = permute(resampledImagesOut,        [3 1 2 4]);
 %  s = struct();
 %  s.x = low_res_data;
+no_subjects = size(resampledImagesOut);
  
  s = struct();
-for(i=1:12) 
+for(i=1:no_subjects(4)) 
     s(i).x = low_res_data(:,:,:,i);
 end
  
-save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/low_res_data';
-% dlexsave(save_dir, s, 'prefixes', 'd1');
+save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/more_low_res_data';
+dlexsave(save_dir, s, 'prefixes', 'd1');
 
 %%
 %Saving the ML reconstructions to check how good these look
 
 counter= 1;
-for(sl=2:2:nSlices-1) % we only take altrnate ones as the even ones are the ML result
-    folder_name = [folders(sl).folder, '/', folders(sl).name]
+for(s=2:2:nSlices-1) % we only take altrnate ones as the even ones are the ML result
+    folder_name = [folders(s).folder, '/', folders(s).name]
     
     images_names = dir([folder_name, '/*.IMA']);
     nImages = size(images_names, 1)
@@ -112,5 +113,5 @@ save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/ML_recon';
 
 %%
 % view a case from the ML reconstruction
-sixth = allData{6};
-implay(permute(sixth,[1 2 3]))
+seventh = allData{7};
+implay(permute(seventh(32:160,32:160,:),[1 2 3]))

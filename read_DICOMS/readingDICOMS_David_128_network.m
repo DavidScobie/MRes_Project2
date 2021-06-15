@@ -63,11 +63,11 @@ end
 %  s.x = low_res_data;
  
  s = struct();
-for(i=1:12) 
+for(i=1:17) 
     s(i).x = low_res_data(:,:,:,i);
 end
  
-save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/low_res_data_128';
-% dlexsave(save_dir, s, 'prefixes', 'd1');
+save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/more_low_res_data_128';
+dlexsave(save_dir, s, 'prefixes', 'd1');
 
 

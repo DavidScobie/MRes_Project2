@@ -1,7 +1,8 @@
 # load and evaluate a saved model
 from numpy import loadtxt
 import tensorflow as tf
-import dlex
+from dlex import dlex
+# from tvmae_dlex_version import dlex
 import h5py
 from tensorflow.keras.models import load_model
 import matplotlib.pyplot as plt
@@ -11,17 +12,18 @@ import scipy.io as sio
 
 # load model
 # model = load_model('./old_network/model.h5')
-model = load_model('./fi_e_150_192_jen_preproc_split_s_a_p/model.h5')
+
+model = load_model('./JAS_preproc_data/L2_and_tvmae_hparams/L2_53_tvmae_23/model.h5')
 # summarize model.
 model.summary()
 
-#Read in the first dataset of 12
-fstart = h5py.File('./low_res_data/d1_00001.h5','r')['x']
+#Read in the first dataset
+fstart = h5py.File('./data/more_low_res_data/d1_00001.h5','r')['x']
 fstart = tf.expand_dims(fstart, axis=3)
 
 #Read in and concatenate the next 11 datasets
-for i in range(11):
-    filepath = './low_res_data/d1_%05d.h5' % (i+2)
+for i in range(16):
+    filepath = './data/more_low_res_data/d1_%05d.h5' % (i+2)
     fi = h5py.File(filepath,'r')['x']
     fi = tf.expand_dims(fi, axis=3)
     fnext = tf.concat([fstart,fi], axis=3)
@@ -40,23 +42,22 @@ low_res = tf.squeeze(tf.image.convert_image_dtype(bigger_dset, tf.float32))
 y_pred = model.predict(bigger_dset)
 
 test_pred = tf.squeeze(tf.image.convert_image_dtype(y_pred, tf.float32))
-print(tf.shape(test_pred))
 
 
 #cropping the 192 down to 128
-test_pred = test_pred[:,:,32:160,32:160]
-print(tf.shape(test_pred))
+# test_pred = test_pred[:,:,32:160,32:160]
 
 # turn the tensorflow arrays into numpy arrays
 low_res_np = tf.make_ndarray(tf.make_tensor_proto(low_res))
 test_pred_np = tf.make_ndarray(tf.make_tensor_proto(test_pred))
 
 #Plot the reconstructed frames as an animation
-PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0,savepath='.\model_192_same_as_pap_crop_to_128')
-# PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
+# PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0,savepath='./model_128_same_as_pap_2')
+PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 
 #save the matrices to files
-# sio.savemat('DICOM_and_reconstruction.mat',{'low_res_DICOM':low_res_np, 'reconstruction':test_pred_np}) #you can save as many arrays as you want
+# # sio.savemat('prosp1_DICOM_MSErecon_RDSSIMrecon.mat',{'low_res_DICOM':low_res_np, 'MSE_recon':test_pred_np,  'RDSSIM_recon':test_pred_np_2}) #you can save as many arrays as you want
+sio.savemat('L2_53_tvmae_23_prosp2.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
 
 plt.show()
 
