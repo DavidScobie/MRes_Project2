@@ -65,7 +65,7 @@ for(i=1:no_subjects(4))
 end
  
 save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/more_low_res_data';
-dlexsave(save_dir, s, 'prefixes', 'd1');
+% dlexsave(save_dir, s, 'prefixes', 'd1');
 
 %%
 %Saving the ML reconstructions to check how good these look

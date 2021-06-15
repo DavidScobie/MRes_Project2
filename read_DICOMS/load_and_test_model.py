@@ -13,17 +13,17 @@ import scipy.io as sio
 # load model
 # model = load_model('./old_network/model.h5')
 
-model = load_model('./JAS_preproc_data/L2_and_tvmae_hparams/L2_53_tvmae_23/model.h5')
+model = load_model('./JAS_preproc_data/fi_2dssim_optim_mse_L2/model.h5')
 # summarize model.
 model.summary()
 
 #Read in the first dataset
-fstart = h5py.File('./data/more_low_res_data/d1_00001.h5','r')['x']
+fstart = h5py.File('./data/gridded/grid_pat_3/d1_00001.h5','r')['x']
 fstart = tf.expand_dims(fstart, axis=3)
 
 #Read in and concatenate the next 11 datasets
-for i in range(16):
-    filepath = './data/more_low_res_data/d1_%05d.h5' % (i+2)
+for i in range(15):
+    filepath = './data/gridded/grid_pat_3/d1_%05d.h5' % (i+2)
     fi = h5py.File(filepath,'r')['x']
     fi = tf.expand_dims(fi, axis=3)
     fnext = tf.concat([fstart,fi], axis=3)
@@ -57,7 +57,7 @@ PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 
 #save the matrices to files
 # # sio.savemat('prosp1_DICOM_MSErecon_RDSSIMrecon.mat',{'low_res_DICOM':low_res_np, 'MSE_recon':test_pred_np,  'RDSSIM_recon':test_pred_np_2}) #you can save as many arrays as you want
-sio.savemat('L2_53_tvmae_23_prosp2.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
+sio.savemat('fi_2dssim_optim_mse_L2_grid_pat_3.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
 
 plt.show()
 
