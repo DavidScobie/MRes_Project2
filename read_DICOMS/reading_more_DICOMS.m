@@ -32,7 +32,7 @@ patient_string = filename.name(1:dot_2_pos);
 
 %Read the DICOM images in to make matrices of the data
 for i = 2:length(unique_slice_no)
-    test=dir([tot_folder,'\',patient_string,char(unique_slice_no(i)),'*.IMA'])
+    test=dir([tot_folder,'\',patient_string,char(unique_slice_no(i)),'*.IMA']);
     for j = 1:size(test)
         dico{i-1}(:,:,j) = dicomread([test(j).folder, '/', test(j).name]);
     end
@@ -57,7 +57,7 @@ end
 for i = 1:size(gridded,2)
  
     resampledImagesOut1= gridded{i};
-    nFrames = size(resampledImagesOut1, 3)
+    nFrames = size(resampledImagesOut1, 3);
 
     [x,y,z] = meshgrid(1:192,1:192,1:nFrames);
     [x1,y1,z1] = meshgrid(1:192,1:192, 1:(nFrames-1)/19:nFrames);
@@ -80,6 +80,14 @@ s = struct();
 for i=1:size(resampledImagesOut,4) 
     s(i).x = gridded_data(:,:,:,i);
 end
- 
-save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/data/gridded/grid_pat_4';
+
+save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/data/scanner_recon/pat_13_SAX';
 % dlexsave(save_dir, s, 'prefixes', 'd1');
+%% Saving the scanner reconstructions
+s = struct();
+for i=1:size(ML_recon,2) 
+    s(i).y_pred = ML_recon{i};
+end
+ 
+save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/scanner_reconstruction/pat_5';
+dlexsave(save_dir, s, 'prefixes', 'd1');

@@ -8,15 +8,29 @@ import matplotlib.pyplot as plt
 import PlotUtils
 from PlotUtils import *
 import scipy.io as sio
+import os
 
 #Read in the first dataset
+patient_code = "pat_5/"
+file_start = "./scanner_reconstruction/"
 
-fstart = h5py.File('./scanner_reconstruction/ML_recon_pat1/d1_00001.h5','r')['y_pred']
+
+
+fstart = h5py.File(os.path.join(file_start, patient_code, 'd1_00001.h5'),'r')['y_pred']
+# fstart = h5py.File('./scanner_reconstruction/pat_3/d1_00001.h5','r')['y_pred']
 fstart = tf.expand_dims(fstart, axis=3)
 
+full_filepath = os.path.join(file_start,patient_code)
+list = os.listdir(full_filepath) # dir is your directory path
+number_files = len(list)
+print(number_files)
+
+
 #Read in and concatenate the next n datasets
-for i in range(9):
-    filepath = './scanner_reconstruction/ML_recon_pat1/d1_%05d.h5' % (i+2)
+for i in range(number_files - 2):
+    filepath = os.path.join(file_start, patient_code, 'd1_%05d.h5') % (i+2)
+    # filepath = filepath % (i+2)
+    # filepath = './scanner_reconstruction/pat_3/d1_%05d.h5' % (i+2)
     fi = h5py.File(filepath,'r')['y_pred']
     fi = tf.expand_dims(fi, axis=3)
     fnext = tf.concat([fstart,fi], axis=3)
@@ -39,6 +53,6 @@ scan_recon_np = tf.make_ndarray(tf.make_tensor_proto(scan_recon))
 
 PlotUtils.plotVid(np.squeeze(scan_recon_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 
-# sio.savemat('scanner_recon_pat_1.mat',{'scanner_recon':scan_recon_np}) #you can save as many arrays as you want
+sio.savemat('scanner_recon_pat_5.mat',{'scanner_recon':scan_recon_np}) #you can save as many arrays as you want
 
 plt.show()
