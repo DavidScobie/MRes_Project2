@@ -11,7 +11,7 @@ import scipy.io as sio
 import os
 
 #Read in the first dataset
-patient_code = "pat_5/"
+patient_code = "pat_6/"
 file_start = "./scanner_reconstruction/"
 
 
@@ -49,10 +49,12 @@ bigger_dset = tf.expand_dims(fnext, axis=4)
 
 scan_recon = tf.squeeze(tf.image.convert_image_dtype(fnext, tf.float32))
 
-scan_recon_np = tf.make_ndarray(tf.make_tensor_proto(scan_recon))
+scan_recon = scan_recon/(tf.math.reduce_max(scan_recon))
+scan_recon_np = tf.make_ndarray(tf.make_tensor_proto(tf.transpose(scan_recon, perm=[0, 3, 1, 2])))
+# scan_recon_np = tf.make_ndarray(tf.make_tensor_proto(scan_recon))
 
 PlotUtils.plotVid(np.squeeze(scan_recon_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 
-sio.savemat('scanner_recon_pat_5.mat',{'scanner_recon':scan_recon_np}) #you can save as many arrays as you want
+sio.savemat('scanner_recon_pat_6.mat',{'scanner_recon':scan_recon_np}) #you can save as many arrays as you want
 
 plt.show()

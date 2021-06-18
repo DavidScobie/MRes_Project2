@@ -57,7 +57,7 @@ norm_dat = interp3(x,y,z, (truthImagesOut1),x1,y1,z1);
 min_norm_dat = min(norm_dat(:));
 max_norm_dat = max(norm_dat(:));
 
-truthImagesOut = (norm_dat - min_norm_dat)/(max_norm_dat - min_norm_dat);
+truthImagesOut = (norm_dat - min_norm_dat)/(max_norm_dat - min_norm_dat); %JUST DO NORMALISATION AND SINGLE
 truthImagesOut = cast(truthImagesOut, 'single');
 
 %% JAS end

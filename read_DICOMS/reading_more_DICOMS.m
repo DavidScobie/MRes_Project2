@@ -1,3 +1,5 @@
+clear all
+close all
 %Read the data in from the file you select
 tot_folder = uigetdir;
 tot_folder = [tot_folder];
@@ -76,18 +78,18 @@ addpath 'C:/PHD/MRes_project/ML_work'
  
 gridded_data = permute(resampledImagesOut,        [3 1 2 4]);
  
-s = struct();
+p = struct();
 for i=1:size(resampledImagesOut,4) 
-    s(i).x = gridded_data(:,:,:,i);
+    p(i).x = gridded_data(:,:,:,i);
 end
 
-save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/data/scanner_recon/pat_13_SAX';
-% dlexsave(save_dir, s, 'prefixes', 'd1');
+save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/data/gridded/pat_13_SAX_2';
+dlexsave(save_dir, p, 'prefixes', 'd1');
 %% Saving the scanner reconstructions
 s = struct();
 for i=1:size(ML_recon,2) 
     s(i).y_pred = ML_recon{i};
 end
- 
-save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/scanner_reconstruction/pat_5';
-dlexsave(save_dir, s, 'prefixes', 'd1');
+
+save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/scanner_reconstruction/pat_12_4CH';
+% dlexsave(save_dir, s, 'prefixes', 'd1');

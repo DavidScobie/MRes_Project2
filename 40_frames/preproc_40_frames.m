@@ -27,12 +27,24 @@ if(bIfPreProcessingInMATALB == true)
 %     addpath '/Users/jennifer/Documents/work/Radial/DL'
     %this is the same as from the 'runBatches3D_newRadialTraj' file which i sent you before
     acc_fact = 13;
+    
+no_frames_collect = 40;
+temp_res = 36.4;
+scan_time = no_frames_collect .* temp_res;
+    
+for(i=1:num_samples)
 
-
-     for(i=1:num_samples)
-
-    %If you just want to do the last 268 sets use
-%      for(i=2001:2268)
+    first_frame_no = randi(rr_int(i));
+    full_seq_length = first_frame_no + scan_time;
+    n_c_cycles = ceil(full_seq_length ./ rr_int(i));
+    long_data = repmat(new_dat_final{i},[1 1 n_c_cycles]);
+    first_slice = ceil((first_frame_no./rr_int(i)).*(size(new_dat_final{i},3)));
+    fram_40_data = long_data(:,:,first_slice:first_slice+39);
+    
+%randi for start of cardiac cycle
+%resample dataset based on rr interval and no frames going to collect
+%create new dataset based on newdatfinal which now has 40 timepoints always
+%
 
 
             simulated_sortGA = abs(SimulatingUndersampledRadialData_sortedGA(new_dat_final{i}, acc_fact));

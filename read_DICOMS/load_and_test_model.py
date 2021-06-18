@@ -11,7 +11,7 @@ from PlotUtils import *
 import scipy.io as sio
 import os
 
-patient_code = "grid_pat_6/"
+patient_code = "pat_3/"
 
 filepath = os.path.join("./data/gridded/",patient_code)
 
@@ -21,8 +21,8 @@ list = os.listdir(full_filepath) # dir is your directory path
 number_files = len(list)
 print(number_files)
 
-model = load_model('./JAS_preproc_data/fi_2dssim_optim_mse_L2/model.h5')
-# summarize model.
+# model = load_model('./JAS_preproc_data/fi_2dssim_optim_mse_L2/model.h5')
+model = load_model('./multiple_orientations/fi_2dssim_optim_mse_L2_mul_ori/model.h5')
 model.summary()
 
 #Read in the first dataset
@@ -66,7 +66,9 @@ PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 
 #save the matrices to files
 # # sio.savemat('prosp1_DICOM_MSErecon_RDSSIMrecon.mat',{'low_res_DICOM':low_res_np, 'MSE_recon':test_pred_np,  'RDSSIM_recon':test_pred_np_2}) #you can save as many arrays as you want
-sio.savemat('fi_2dssim_optim_mse_L2_grid_pat_6.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
+
+# sio.savemat('fi_2dssim_optim_mse_L2_grid_pat_13_SAX_2.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
+sio.savemat('fi_2dssim_optim_mse_L2_mul_ori_pat_13_SAX.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np})
 
 plt.show()
 
