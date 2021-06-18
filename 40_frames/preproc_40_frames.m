@@ -4,9 +4,11 @@
 %close all
 addpath 'D:\MRes_project\ML_work\paper_data_mat_files'
 addpath 'C:\PHD\MRes_project\ML_work\gridder' 
-% addpath '/Users/jennifer/Documents/work/Radial/DL'
+addpath 'C:\PHD\MRes_project\ML_work'
+
 load('SAXdataAll.mat');
-num_samples = 2000;
+% num_samples = 2000;
+num_samples = size(new_dat_final,2);
 
 % here i just forced it to only use the first 40
 % if(num_samples > 40)  
@@ -34,29 +36,17 @@ scan_time = no_frames_collect .* temp_res;
     
 for(i=1:num_samples)
 
-    first_frame_no = randi(rr_int(i));
-    full_seq_length = first_frame_no + scan_time;
-    n_c_cycles = ceil(full_seq_length ./ rr_int(i));
-    long_data = repmat(new_dat_final{i},[1 1 n_c_cycles]);
-    first_slice = ceil((first_frame_no./rr_int(i)).*(size(new_dat_final{i},3)));
-    fram_40_data = long_data(:,:,first_slice:first_slice+39);
+    fram_40_data = make_40_frame_data(rr_int(i), scan_time, new_dat_final{i});
     
-%randi for start of cardiac cycle
-%resample dataset based on rr interval and no frames going to collect
-%create new dataset based on newdatfinal which now has 40 timepoints always
-%
+    %randi for start of cardiac cycle
+    %resample dataset based on rr interval and no frames going to collect
+    %create new dataset based on newdatfinal which now has 40 timepoints always
 
 
-            simulated_sortGA = abs(SimulatingUndersampledRadialData_sortedGA(new_dat_final{i}, acc_fact));
+            simulated_sortGA = abs(SimulatingUndersampledRadialData_sortedGA(fram_40_data, acc_fact));
             
-            %If you want 192 size matrix use this
-%             [data_truth{i}, data_UnderSampled{i}] = resamp_undersamp_dat_192(new_dat_final{i}, simulated_sortGA);
-            
-            %If you just want to do the last 268 sets use
-%               [data_truth{i-2000}, data_UnderSampled{i-2000}] = resamp_undersamp_dat_192(new_dat_final{i}, simulated_sortGA);
-            
-            %If you want 128 size matrix (cropped) use this
-            [data_truth{i}, data_UnderSampled{i}] = resample_undersample_data(new_dat_final{i}, simulated_sortGA);
+%             If you want 192 size matrix use this
+            [data_truth{i}, data_UnderSampled{i}] = frame_40_res_und_data(fram_40_data, simulated_sortGA);
             disp(i)
      end
 
@@ -93,6 +83,6 @@ end
 
 % Use dlexsave to write to correct format into the ‘data’ folder
 
-save_dir = 'C:/PHD/MRes_project/ML_work/mapped_docker_files/ml/data/last_268_192_MAT_pre/'
+save_dir = 'C:/PHD/MRes_project/ML_work/mapped_docker_files/ml/data/frames_40/'
 
 dlexsave(save_dir, s, 'prefixes', 'test');
