@@ -6,7 +6,7 @@ addpath C:\PHD\MRes_project\ML_work\dlex_framework\dlex\matlab
 
 %Loading data in
 % data=dlexload('C:\PHD\MRes_project\ML_work\mapped_docker_files\ml\results\size_192\rdssim_L2_50\fi_optimised_rdssim_unet_150_epo_0.89\pred\val');
-data=dlexload('D:\MRes_project\ML_work\mapped_docker_files\ml\results\multiple_orientations\fi_rdssim_loss_1st_run\pred\val');
+data=dlexload('D:\MRes_project\ML_work\mapped_docker_files\ml\results\frames_40\fi_frames_40_1st_half\pred\val');
 
 %Collecting data for 1st validation image
 data1=data(1);

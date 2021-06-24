@@ -84,3 +84,9 @@ end
 save_dir = 'C:/PHD/MRes_project/ML_work/mapped_docker_files/ml/data/last_268_192_MAT_pre/'
 
 dlexsave(save_dir, s, 'prefixes', 'test');
+
+%%
+third_dim = [];
+for i = 1:2268
+    third_dim(i) = size(new_dat_final{i},3);
+end
