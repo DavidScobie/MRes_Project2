@@ -12,14 +12,8 @@ full_seq_length = first_frame_no + scan_time;
 n_c_cycles = ceil(full_seq_length ./ RHR_RR); %Find number of cardiac cycles
 long_data = repmat(input_data,[1 1 n_c_cycles+1]); %Extend the data out
 first_slice = ceil((first_frame_no./RHR_RR).*(size(input_data,3))); %Find random first slice
-% fram_40_data = long_data(:,:,first_slice:first_slice+39);
+% fram_40_data = long_data(:,:,first_slice:first_slice+39); %Old 40 frame
 long_ran_start = long_data(:,:,first_slice:size(long_data,3)); %Long dataset with random first slice
-
-% nFrames = size(truthImagesIn, 3)
-% [x,y,z] = meshgrid(1:newMatrix,1:newMatrix,1:nFrames);
-% [x1,y1,z1] = meshgrid(1:newMatrix,1:newMatrix, 1:(nFrames-1)/19:nFrames);
-% truthImagesOut1 = double(truthImagesIn(startY:endY,startX:endX,:));
-% norm_dat = interp3(x,y,z, (truthImagesOut1),x1,y1,z1);
 
 nFrames = size(long_ran_start, 3); %Interpolate based on acceleration factor
 [x,y,z] = meshgrid(1:192,1:192,1:nFrames);
