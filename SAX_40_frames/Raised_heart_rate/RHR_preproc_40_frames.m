@@ -20,17 +20,17 @@ scan_time = no_frames_collect .* temp_res;
 for(i=1:num_samples)
 % for(i=1:2268)
     
-    fram_40_data = RHR_make_40_frame_data(rr_int(i), scan_time, new_dat_final{i});
+    [long_ran_start, accel] = RHR_long_random_start(rr_int(i), scan_time, new_dat_final{i});
     
     %randi for start of cardiac cycle
     %resample dataset based on rr interval and no frames going to collect
     %create new dataset based on newdatfinal which now has 40 timepoints always
 
 
-            simulated_sortGA = abs(SimulatingUndersampledRadialData_sortedGA(fram_40_data, acc_fact));
+            simulated_sortGA = abs(SimulatingUndersampledRadialData_sortedGA(long_ran_start, acc_fact));
             
 %             If you want 192 size matrix use this
-            [data_truth{i}, data_UnderSampled{i}] = RHR_frame_40_res_und_data(fram_40_data, simulated_sortGA);
+            [data_truth{i}, data_UnderSampled{i}] = RHR_frame_40_res_und_data(long_ran_start, simulated_sortGA, accel);
             disp(i)
 end
 
