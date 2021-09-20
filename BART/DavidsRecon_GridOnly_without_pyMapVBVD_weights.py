@@ -274,10 +274,11 @@ for sl in range(noSlices) : #range 12
     " slice data is currently [matrix*2, accSpokes, nCoils, nPhases] "
  
     noSlices = 1 #loop over the 12 of them later
-    ab_squeeze = np.zeros((40,192,192)) #for plotting at end
-    nPhases = 3 #the number of temporal frames looking at
-    fig, ax = plt.subplots(nrows=1, ncols=nPhases,figsize=(10,10))
+    img_squeeze = np.zeros((40,192,192),dtype = 'complex_') #for plotting at end
+    nPhases = 40 #the number of temporal frames looking at
+    # fig, ax = plt.subplots(nrows=1, ncols=nPhases,figsize=(10,10))
     for i in range (nPhases):
+        print(i)
 
         dataCoilSensitivities = np.zeros((matrix*2, accSpokes, 1, nCoils), dtype=complex) #(384,13,1,26) 
         trajScale = np.zeros((dimensions, matrix*2, accSpokes)) #(3,384,13)
@@ -291,7 +292,7 @@ for sl in range(noSlices) : #range 12
         trajSc = tf.expand_dims(trajSc,axis=0)
         trajSc = tf.repeat(trajSc, repeats = 26, axis = 0)
         trajSc = (trajSc / 192) *2*np.pi #scale between -pi and pi
-        print('trajSc',tf.shape(trajSc), 'max traj', np.max(trajSc), 'min traj', np.min(trajSc)) #trajSc (26,4992,2) here
+        #print('trajSc',tf.shape(trajSc), 'max traj', np.max(trajSc), 'min traj', np.min(trajSc)) #trajSc (26,4992,2) here
         
         #plt.figure(i+3)
         #plt.imshow()
@@ -303,18 +304,22 @@ for sl in range(noSlices) : #range 12
 
         weights = tfmr.estimate_density(trajSc, (192,192))
         dcw_first_time_data = first_time_data / tf.cast(weights,dtype=tf.complex128)
-        print('dcw_first_time_data', np.shape(dcw_first_time_data))
+        #print('dcw_first_time_data', np.shape(dcw_first_time_data))
         
         # print('first_time_data', tf.shape(first_time_data), 'trajSc', tf.shape(trajSc),'trajSc_type',trajSc.dtype) 
         ave_gridded_data = tfft.nufft(tf.cast(dcw_first_time_data,tf.complex128) , tf.cast(trajSc,tf.float64), transform_type='type_1', fft_direction='backward', grid_shape=(192,192))
         # print('ave_gridded_data', tf.shape(ave_gridded_data))
 
-        ab_squeeze[i,:,:] = abs(np.squeeze(ave_gridded_data[0,:,:])) #looking at a particular coil
-        ax[i].imshow(np.squeeze(ab_squeeze[i,:,:])) 
+        img_squeeze[i,:,:] = np.squeeze(ave_gridded_data[0,:,:]) #looking at a particular coil
+        # ax[i].imshow(abs(np.squeeze(img_squeeze[i,:,:]))) 
 
+    sum_img = np.sum(img_squeeze,axis=0) #sum over the 40 images
     plt.figure(200)
-    plt.imshow(np.sum(ab_squeeze,axis=0))
-    plt.show()
+    plt.imshow(abs(sum_img))
+
+    plt.figure(201)
+    plt.imshow(abs(np.multiply(sum_img, np.conjugate(np.squeeze(coil_sensitivities[:,:,0,0])))))
+plt.show()
 
 #         """   
 #         print("gridded_data2 = ", gridded_data2.shape)
