@@ -224,8 +224,14 @@ for sl in range(noSlices) : #range 12
     trajSc = (trajSc / 192) *2*np.pi
     print('trajSc',tf.shape(trajSc), 'max traj', np.max(trajSc), 'min traj', np.min(trajSc))
 
-    print('TYPES', 'dataCS_perm', dataCS_perm.dtype, 'trajSc', trajSc.dtype)
-    average_gridded_data = tfft.nufft(dataCS_perm , trajSc, transform_type='type_1', fft_direction='backward', grid_shape=(192,192))
+    #calculate weights
+    weights = tfmr.estimate_density(trajSc, (192,192))
+    print('weights shape',np.shape(weights))
+    dcw_dataCS_perm = dataCS_perm / tf.cast(weights,dtype=tf.complex128)
+    print('dcw_dataCS_perm', np.shape(dcw_dataCS_perm))
+
+    print('TYPES', 'dcw_dataCS_perm', dcw_dataCS_perm.dtype, 'trajSc', trajSc.dtype)
+    average_gridded_data = tfft.nufft(dcw_dataCS_perm , trajSc, transform_type='type_1', fft_direction='backward', grid_shape=(192,192))
     # average_gridded_data = tf.math.reduce_sum(average_gridded_data,axis = 1)
     print('average_gridded_data',tf.shape(average_gridded_data), 'max avg', np.max(average_gridded_data), 'min avg', np.min(average_gridded_data))
     average_gridded_data= tf.transpose(average_gridded_data, perm=[1,2,0]) #big set
@@ -235,16 +241,14 @@ for sl in range(noSlices) : #range 12
 
     " this part is fine "
     fig, ax = plt.subplots(nrows=1,ncols=4, figsize=(10,10))
-    #for cl in range(4) :
-    #    ax[cl].imshow(abs(average_gridded_data[:,:,cl]))
-    reshape_grid_data = tf.reshape(average_gridded_data,[average_gridded_data.shape[0],-1])#reshape to save
-    # np.savetxt('reshape_grid_data.txt',reshape_grid_data,delimiter=',')
+    for cl in range(4) :
+       ax[cl].imshow(abs(average_gridded_data[:,:,cl]))
     "  "
     del dataCS_3124
     average_gridded_data = tf.expand_dims(average_gridded_data,axis=2)
     print("average_gridded_data exp dims = ", average_gridded_data.shape)
     #ksp = fft(average_gridded_data.numpy())
-    print('average_griided_data dtype',average_gridded_data.dtype)
+    print('average_gridded_data dtype',average_gridded_data.dtype)
     ksp = tfmr.fftn(np.squeeze(average_gridded_data.numpy()), shape=(192,192,26), axes=None, norm='backward', shift=True)
     print('post ft ksp=', np.shape(ksp))
     fig, ax = plt.subplots(nrows=1,ncols=4,figsize=(10,10))
@@ -254,7 +258,7 @@ for sl in range(noSlices) : #range 12
     del average_gridded_data
 
     #coil_sensitivities = bart(1, "caldir 20", ksp) #this is a calibration of the sensitivities
-    coil_sensitivities = tfmr.estimate_coil_sensitivities(np.squeeze(ksp), method='espirit')
+    coil_sensitivities = tfmr.estimate_coil_sensitivities(ksp, method='espirit',num_maps = 1)
     " coil_sensivitoes = np.squeeze(coil_sensitivities) "
     del ksp
     " plot coil sensitivities"
@@ -272,6 +276,7 @@ for sl in range(noSlices) : #range 12
     noSlices = 1 #loop over the 12 of them later
     ab_squeeze = np.zeros((40,192,192)) #for plotting at end
     nPhases = 3 #the number of temporal frames looking at
+    fig, ax = plt.subplots(nrows=1, ncols=nPhases,figsize=(10,10))
     for i in range (nPhases):
 
         dataCoilSensitivities = np.zeros((matrix*2, accSpokes, 1, nCoils), dtype=complex) #(384,13,1,26) 
@@ -296,23 +301,19 @@ for sl in range(noSlices) : #range 12
         dataCS_perm = tf.transpose(first_time_data, perm=[3,0,1,2])
         first_time_data = tf.reshape( dataCS_perm, [26 , -1]) #(26,4992) to enter to nufft yes
 
-        #calculate weights
         weights = tfmr.estimate_density(trajSc, (192,192))
-        print('weights shape',np.shape(weights))
-        dcw_first_time_data = weights * first_time_data
+        dcw_first_time_data = first_time_data / tf.cast(weights,dtype=tf.complex128)
         print('dcw_first_time_data', np.shape(dcw_first_time_data))
         
         # print('first_time_data', tf.shape(first_time_data), 'trajSc', tf.shape(trajSc),'trajSc_type',trajSc.dtype) 
         ave_gridded_data = tfft.nufft(tf.cast(dcw_first_time_data,tf.complex128) , tf.cast(trajSc,tf.float64), transform_type='type_1', fft_direction='backward', grid_shape=(192,192))
         # print('ave_gridded_data', tf.shape(ave_gridded_data))
 
-        # print('i = ', i)
-        plt.figure(i+3)
         ab_squeeze[i,:,:] = abs(np.squeeze(ave_gridded_data[0,:,:])) #looking at a particular coil
-        plt.imshow(np.squeeze(ab_squeeze[i,:,:])) 
+        ax[i].imshow(np.squeeze(ab_squeeze[i,:,:])) 
 
-    #plt.figure(nPhases+1)
-    #plt.imshow(np.sum(ab_squeeze,axis=0))
+    plt.figure(200)
+    plt.imshow(np.sum(ab_squeeze,axis=0))
     plt.show()
 
 #         """   
