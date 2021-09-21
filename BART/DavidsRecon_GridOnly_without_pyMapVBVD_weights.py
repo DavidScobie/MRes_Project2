@@ -15,6 +15,8 @@ import PlotUtils
 import scipy.io as sio
 from scipy.fft import fft, ifft
 import tensorflow_mri as tfmr
+import tensorflow_nufft as tfft
+import tensorflow as tf
 # In[2]:
 
 
@@ -176,12 +178,15 @@ del kx
 
 
 GRIDresult = np.zeros((matrix, matrix, nPhases, noSlices)) # (192,192,40,12)
+img_squeeze = np.zeros((12,26,40,192,192),dtype = 'complex_') #for plotting at end
+coil_corr = np.zeros((12,26,40,192,192),dtype = 'complex_')
 
-noSlices = 1
+noSlices = 12
 for sl in range(noSlices) : #range 12
-    sliceData = raw_data[:,:,:,:,sl] #[384, 13, 40, 26, 1] , why do we have the 13 in here? 
+    print('sl',sl)
+    sliceData = raw_data[:,:,:,:,sl] #[384, 13, 40, 26, 12] , why do we have the 13 in here? 
 
-    print("sliceData ", sliceData.shape)
+    #print("sliceData ", sliceData.shape)
     dataCoilSensitivities = np.zeros((matrix*2, accSpokes*nPhases, 1, nCoils), dtype=complex) #(384,520,1,26) each of the k space points has its own sensitivity!
     trajScale = np.zeros((dimensions, matrix*2, accSpokes*nPhases)) #(3,384,520)
 
@@ -199,21 +204,19 @@ for sl in range(noSlices) : #range 12
 
     "grid the data"
     "David: you need to chnage the following line to your gridder!!!!"
-    print('trajScale',np.shape(trajScale),'dataCS_3124',np.shape(dataCS_3124))
+    #print('trajScale',np.shape(trajScale),'dataCS_3124',np.shape(dataCS_3124))
 
-    import tensorflow_nufft as tfft
-    import tensorflow as tf
     # import tensorflow_mri as tfmr
     
     #reshape the raw data
     dataCS_perm = tf.transpose(dataCS_3124, perm=[3,0,1,2])
-    print('look at this shape', tf.shape(dataCS_perm) )
+    #print('look at this shape', tf.shape(dataCS_perm) )
     dataCS_perm =  tf.reshape(dataCS_perm , [nCoils, -1])
-    print('dataCS_perm',tf.shape(dataCS_perm))
+    #print('dataCS_perm',tf.shape(dataCS_perm))
 
     #reshape the trajectory data
     trajSc = trajScale[0:2,:,:] #making it (2,384,520)
-    print('traj_scale',tf.shape(trajSc))
+    #print('traj_scale',tf.shape(trajSc))
     trajSc= tf.transpose(trajSc, perm=[1,2,0])
     trajSc =  tf.reshape(trajSc , [-1 , 2])
     trajSc = tf.expand_dims(trajSc,axis=0)
@@ -222,38 +225,38 @@ for sl in range(noSlices) : #range 12
 
     #scale from -pi to pi
     trajSc = (trajSc / 192) *2*np.pi
-    print('trajSc',tf.shape(trajSc), 'max traj', np.max(trajSc), 'min traj', np.min(trajSc))
+    #print('trajSc',tf.shape(trajSc), 'max traj', np.max(trajSc), 'min traj', np.min(trajSc))
 
     #calculate weights
     weights = tfmr.estimate_density(trajSc, (192,192))
-    print('weights shape',np.shape(weights))
+    #print('weights shape',np.shape(weights))
     dcw_dataCS_perm = dataCS_perm / tf.cast(weights,dtype=tf.complex128)
-    print('dcw_dataCS_perm', np.shape(dcw_dataCS_perm))
+    #print('dcw_dataCS_perm', np.shape(dcw_dataCS_perm))
 
-    print('TYPES', 'dcw_dataCS_perm', dcw_dataCS_perm.dtype, 'trajSc', trajSc.dtype)
+    #print('TYPES', 'dcw_dataCS_perm', dcw_dataCS_perm.dtype, 'trajSc', trajSc.dtype)
     average_gridded_data = tfft.nufft(dcw_dataCS_perm , trajSc, transform_type='type_1', fft_direction='backward', grid_shape=(192,192))
     # average_gridded_data = tf.math.reduce_sum(average_gridded_data,axis = 1)
-    print('average_gridded_data',tf.shape(average_gridded_data), 'max avg', np.max(average_gridded_data), 'min avg', np.min(average_gridded_data))
+    #print('average_gridded_data',tf.shape(average_gridded_data), 'max avg', np.max(average_gridded_data), 'min avg', np.min(average_gridded_data))
     average_gridded_data= tf.transpose(average_gridded_data, perm=[1,2,0]) #big set
-    print("average_gridded_data = ", average_gridded_data.shape)
+    #print("average_gridded_data = ", average_gridded_data.shape)
     # average_gridded_data = bart(1,"nufft -i -d"+str(matrix)+":"+str(matrix)+":1", trajScale, dataCS_3124) #The bart nufft
     " size (192x192x1x26)"
 
     " this part is fine "
-    fig, ax = plt.subplots(nrows=1,ncols=4, figsize=(10,10))
-    for cl in range(4) :
-       ax[cl].imshow(abs(average_gridded_data[:,:,cl]))
+    # fig, ax = plt.subplots(nrows=1,ncols=4, figsize=(10,10))
+    # for cl in range(4) :
+    #    ax[cl].imshow(abs(average_gridded_data[:,:,cl]))
     "  "
     del dataCS_3124
     average_gridded_data = tf.expand_dims(average_gridded_data,axis=2)
-    print("average_gridded_data exp dims = ", average_gridded_data.shape)
+    #print("average_gridded_data exp dims = ", average_gridded_data.shape)
     #ksp = fft(average_gridded_data.numpy())
-    print('average_gridded_data dtype',average_gridded_data.dtype)
+    #print('average_gridded_data dtype',average_gridded_data.dtype)
     ksp = tfmr.fftn(np.squeeze(average_gridded_data.numpy()), shape=(192,192,26), axes=None, norm='backward', shift=True)
-    print('post ft ksp=', np.shape(ksp))
-    fig, ax = plt.subplots(nrows=1,ncols=4,figsize=(10,10))
-    for cl in range (4):
-        ax[cl].imshow(abs(ksp[:,:,cl]))
+    #print('post ft ksp=', np.shape(ksp))
+    # fig, ax = plt.subplots(nrows=1,ncols=4,figsize=(10,10))
+    # for cl in range (4):
+    #     ax[cl].imshow(abs(ksp[:,:,cl]))
     #ksp = bart(1, "fft -u 7", average_gridded_data.numpy()) #The coil sensitivities are found by taking the fourier transform of the sum over the images
     del average_gridded_data
 
@@ -261,11 +264,11 @@ for sl in range(noSlices) : #range 12
     coil_sensitivities = tfmr.estimate_coil_sensitivities(ksp, method='espirit',num_maps = 1)
     " coil_sensivitoes = np.squeeze(coil_sensitivities) "
     del ksp
-    " plot coil sensitivities"
-    print("sl = ", sl, " , cS size = ", coil_sensitivities.shape)
-    fig, ax = plt.subplots(nrows=1, ncols=5,figsize=(10,10))
-    for cl in range(5) :
-        ax[cl].imshow(abs(coil_sensitivities[:,:,cl,0]))
+    # " plot coil sensitivities"
+    # print("sl = ", sl, " , cS size = ", coil_sensitivities.shape)
+    # fig, ax = plt.subplots(nrows=1, ncols=5,figsize=(10,10))
+    # for cl in range(5) :
+    #     ax[cl].imshow(abs(coil_sensitivities[:,:,cl,0]))
     " "
     
 #     " ---------------------------------------------- "
@@ -273,13 +276,11 @@ for sl in range(noSlices) : #range 12
 
     " slice data is currently [matrix*2, accSpokes, nCoils, nPhases] "
  
-    noSlices = 1 #loop over the 12 of them later
-    img_squeeze = np.zeros((26,40,192,192),dtype = 'complex_') #for plotting at end
-    coil_corr = np.zeros((26,40,192,192),dtype = 'complex_')
+    #noSlices = 1 #loop over the 12 of them later
     nPhases = 40 #the number of temporal frames looking at
     # fig, ax = plt.subplots(nrows=1, ncols=nPhases,figsize=(10,10))
     for i in range (nPhases):
-        print(i)
+        #print(i)
 
         dataCoilSensitivities = np.zeros((matrix*2, accSpokes, 1, nCoils), dtype=complex) #(384,13,1,26) 
         trajScale = np.zeros((dimensions, matrix*2, accSpokes)) #(3,384,13)
@@ -312,18 +313,18 @@ for sl in range(noSlices) : #range 12
         # print('ave_gridded_data', tf.shape(ave_gridded_data))
 
         for j in range (nCoils):
-            img_squeeze[j,i,:,:] = np.squeeze(ave_gridded_data[j,:,:]) #looking at a particular coil
+            img_squeeze[sl,j,i,:,:] = np.squeeze(ave_gridded_data[j,:,:]) #looking at a particular coil
             # ax[i].imshow(abs(np.squeeze(img_squeeze[i,:,:]))) 
-            coil_corr[j,i,:,:] = np.multiply(np.squeeze(img_squeeze[j,i,:,:]), np.conjugate(np.squeeze(coil_sensitivities[:,:,j,0])))
+            coil_corr[sl,j,i,:,:] = np.multiply(np.squeeze(img_squeeze[sl,j,i,:,:]), np.conjugate(np.squeeze(coil_sensitivities[:,:,j,0])))
 
     # sum_img = np.sum(img_squeeze,axis=0) #sum over the 40 images
-    plt.figure(200)
-    plt.imshow(abs(coil_corr[3,37,:,:])) #show coil 3, 37th frame
-    print('coil_corr',coil_corr.dtype)
-    # plt.imshow(abs(sum_img))
+plt.figure(200)
+plt.imshow(abs(coil_corr[9,3,37,:,:])) #show slice 9, coil 3, 37th frame
+print('coil_corr',coil_corr.dtype)
+# plt.imshow(abs(sum_img))
 
-    # plt.figure(201)
-    # plt.imshow(abs(np.multiply(sum_img, np.conjugate(np.squeeze(coil_sensitivities[:,:,0,0])))))
+# plt.figure(201)
+# plt.imshow(abs(np.multiply(sum_img, np.conjugate(np.squeeze(coil_sensitivities[:,:,0,0])))))
 plt.show()
 
 #         """   
