@@ -274,7 +274,8 @@ for sl in range(noSlices) : #range 12
     " slice data is currently [matrix*2, accSpokes, nCoils, nPhases] "
  
     noSlices = 1 #loop over the 12 of them later
-    img_squeeze = np.zeros((40,192,192),dtype = 'complex_') #for plotting at end
+    img_squeeze = np.zeros((26,40,192,192),dtype = 'complex_') #for plotting at end
+    coil_corr = np.zeros((26,40,192,192),dtype = 'complex_')
     nPhases = 40 #the number of temporal frames looking at
     # fig, ax = plt.subplots(nrows=1, ncols=nPhases,figsize=(10,10))
     for i in range (nPhases):
@@ -310,15 +311,19 @@ for sl in range(noSlices) : #range 12
         ave_gridded_data = tfft.nufft(tf.cast(dcw_first_time_data,tf.complex128) , tf.cast(trajSc,tf.float64), transform_type='type_1', fft_direction='backward', grid_shape=(192,192))
         # print('ave_gridded_data', tf.shape(ave_gridded_data))
 
-        img_squeeze[i,:,:] = np.squeeze(ave_gridded_data[0,:,:]) #looking at a particular coil
-        # ax[i].imshow(abs(np.squeeze(img_squeeze[i,:,:]))) 
+        for j in range (nCoils):
+            img_squeeze[j,i,:,:] = np.squeeze(ave_gridded_data[j,:,:]) #looking at a particular coil
+            # ax[i].imshow(abs(np.squeeze(img_squeeze[i,:,:]))) 
+            coil_corr[j,i,:,:] = np.multiply(np.squeeze(img_squeeze[j,i,:,:]), np.conjugate(np.squeeze(coil_sensitivities[:,:,j,0])))
 
-    sum_img = np.sum(img_squeeze,axis=0) #sum over the 40 images
+    # sum_img = np.sum(img_squeeze,axis=0) #sum over the 40 images
     plt.figure(200)
-    plt.imshow(abs(sum_img))
+    plt.imshow(abs(coil_corr[3,37,:,:])) #show coil 3, 37th frame
+    print('coil_corr',coil_corr.dtype)
+    # plt.imshow(abs(sum_img))
 
-    plt.figure(201)
-    plt.imshow(abs(np.multiply(sum_img, np.conjugate(np.squeeze(coil_sensitivities[:,:,0,0])))))
+    # plt.figure(201)
+    # plt.imshow(abs(np.multiply(sum_img, np.conjugate(np.squeeze(coil_sensitivities[:,:,0,0])))))
 plt.show()
 
 #         """   
