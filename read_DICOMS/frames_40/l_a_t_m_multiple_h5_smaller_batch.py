@@ -14,20 +14,20 @@ import os
 #Get it to run on the CPU because CPU is 16GB whereas GPU is 4GB, (and we use over 6GB here)
 os.environ["CUDA_VISIBLE_DEVICES"]="-1" 
 
-patient_code = "ex3_ds/"
+patient_code = "h5_slices/"
 
-filepath = os.path.join("../data/firs_scan/gridded/",patient_code)
-# filepath = os.path.join("../data/gridded/",patient_code)
+#filepath = os.path.join("../data/firs_scan/gridded/",patient_code)
+filepath = os.path.join("../../BART/data/meas_rest_stack/",patient_code)
 
-full_filepath = os.path.join("/media/sf_ML_work/read_DICOMS/data/firs_scan/gridded",patient_code) #virtual box
-# full_filepath = os.path.join("C:/PHD/MRes_project/ML_work/read_DICOMS/data/firs_scan/gridded",patient_code)
+# full_filepath = os.path.join("/media/sf_ML_work/read_DICOMS/data/firs_scan/gridded",patient_code) #virtual box
+full_filepath = os.path.join("/media/sf_ML_work/BART/data/meas_rest_stack/",patient_code)
 
 list = os.listdir(full_filepath) # dir is your directory path
 number_files = len(list)
 # number_files = 4
 print(number_files)
 
-model = load_model('./fi_SAX_rest_and_trans_aug_40_y_only_chk_new_gridder/model2.h5')
+model = load_model('./fi_SAX_rest_and_trans_aug_40_y_only_chk_new_gridder/model.h5')
 # model = load_model('../multiple_orientations_20/fi_2dssim_optim_mse_L2_mul_ori/model.h5')
 model.summary()
 
@@ -90,7 +90,7 @@ test_pred_np = tf.make_ndarray(tf.make_tensor_proto(test_pred))
 # PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 
-sio.savemat('fi_SAX_rest_and_trans_aug_40_y_only_chk_new_gridder_ex3_ds_new.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
+sio.savemat('fi_SAX_rest_and_trans_aug_40_y_only_chk_new_gridder_rest_prosp_new_grid.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
 
 plt.show()
 
