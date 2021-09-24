@@ -39,3 +39,25 @@ end
 
 save_dir = 'C:/PHD/MRes_project/ML_work/BART/data/meas_ex3_stack/h5_slices';
 dlexsave(save_dir, s, 'prefixes', 'd1');
+
+%%
+
+%Just looking at 1 slice and saving it
+
+load('C:\PHD\MRes_project\ML_work\BART\data\meas_rest_stack\gridded_image_data\meas_MID00573_FID48984_rest_stack_sl_7.mat')
+flipped_img_7 = flip(img_data,3);
+
+normed_img = flipped_img_7./ max(max(max(max(flipped_img_7)))); %Normalise
+
+% slice1 = abs(squeeze(normed_img(1,:,:,:)));
+% 
+% implay(double(permute(slice1,[2 3 1])))
+
+dims = size(normed_img);
+s = struct();
+for i = 1:dims(1)
+    s(i).x = abs(squeeze(normed_img(i,:,:,:)));
+end
+
+save_dir = 'C:/PHD/MRes_project/ML_work/BART/data/meas_rest_stack/h5_slices';
+dlexsave(save_dir, s, 'prefixes', 'd1');
