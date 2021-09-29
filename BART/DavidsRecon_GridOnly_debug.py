@@ -15,7 +15,7 @@ import tensorflow_nufft as tfft
 import tensorflow as tf
 import math
 
-contents = sio.loadmat('/media/sf_ML_work/BART/meas_MID00573_FID48984_rest_stack_raw_and_ang.mat') #CHANGE
+contents = sio.loadmat('/media/sf_ML_work/BART/meas_MID00576_FID48987_ex3_stack_raw_and_ang.mat') #CHANGE
 raw_data = contents['raw_data'] #shape (384, 13, 40, 26, 12)
 raw_data_shape = np.shape(raw_data)
 
@@ -56,10 +56,10 @@ del radialAngles
 del ang   
 
 noSlices = 1 #CHANGE
-starting_slice = 7 #CHANGE
+starting_slice = 0 #CHANGE
 coil_corr = np.zeros((noSlices,nCoils,nPhases,matrix,matrix),dtype = 'complex_')
 
-for sl in range(noSlices) : #range 12
+for sl in range(noSlices) : 
     sl = sl+starting_slice 
     print('sl',sl)
 
@@ -83,7 +83,6 @@ for sl in range(noSlices) : #range 12
     print('dataCS_perm',np.shape(dataCS_perm))
     del dataCS_3124
     dataCS_perm =  tf.reshape(dataCS_perm , [nCoils, -1])
-    print('here')
     #reshape the trajectory data
     trajSc = trajScale[0:2,:,:] #making it (2,384,520)
     del trajScale
@@ -92,15 +91,14 @@ for sl in range(noSlices) : #range 12
     trajSc =  tf.reshape(trajSc , [-1 , 2])
     trajSc = tf.expand_dims(trajSc,axis=0)
     trajSc = tf.repeat(trajSc, repeats = 26, axis = 0)
-    print('here 2')
     #scale from -pi to pi
-    trajSc = (trajSc / 192) *2*np.pi
+    trajSc = (trajSc / 192) *2*np.pi 
 
     #calculate weights
     # weights = tfmr.estimate_density(trajSc, (192,192))
     # print('weights shape',np.shape(weights), 'max wei', np.max(weights), 'min wei', np.min(weights))
 
-    radial_weights = tfmr.radial_density(192, views=13*40, phases=1, spacing='sorted', domain='full', readout_os=2.0)
+    radial_weights = tfmr.radial_density(192, views=13*40, phases=1, ordering='sorted', angle_range='full', readout_os=2.0)
     print('radial_weights',np.shape(radial_weights), 'max rad_wei', np.max(radial_weights), 'min rad_wei', np.min(radial_weights)) #(40,1,4992)
     radial_weights = tf.transpose(radial_weights, perm=[1,0,2]) #(1,40,4992) CRUCIAL, IF OTHER WAY ROUND THE ORDER IS WRONG
     radial_weights = tf.reshape(radial_weights, [1 , -1]) #(1,199680)
@@ -110,33 +108,31 @@ for sl in range(noSlices) : #range 12
     print('dataCS_perm',np.shape(dataCS_perm))
     del dataCS_perm
     #del weights
-    print('here!3')
     average_gridded_data = tfft.nufft(dcw_dataCS_perm , trajSc, transform_type='type_1', fft_direction='backward', grid_shape=(192,192))
     del dcw_dataCS_perm
     average_gridded_data= tf.transpose(average_gridded_data, perm=[1,2,0]) #big set
     print('average_gridded_data',np.shape(average_gridded_data))
 
-    fig, ax = plt.subplots(nrows=1,ncols=4, figsize=(10,10))
-    for cl in range(4) :
-       ax[cl].imshow(abs(average_gridded_data[:,:,cl]))
+    # fig, ax = plt.subplots(nrows=1,ncols=4, figsize=(10,10))
+    # for cl in range(4) :
+    #    ax[cl].imshow(abs(average_gridded_data[:,:,cl]))
     
     #ksp = tfmr.fftn(np.squeeze(average_gridded_data.numpy()), shape=(192,192,26), axes=[0,1], norm='backward', shift=True)
     ksp = tfmr.fftn(np.squeeze(average_gridded_data.numpy()), axes=[0,1], norm='backward', shift=True)
     print('ksp',np.shape(ksp))
     #del average_gridded_data
-    print('here!4')
     coil_sensitivities = tfmr.estimate_coil_sensitivities(average_gridded_data, method='walsh')
     del ksp
 
     print('coil_sensitivities',tf.shape(coil_sensitivities))
-    fig, ax = plt.subplots(nrows=1,ncols=4, figsize=(10,10))
-    for cl in range(4) :
-       ax[cl].imshow(abs(coil_sensitivities[:,:,cl]))
+    # fig, ax = plt.subplots(nrows=1,ncols=4, figsize=(10,10))
+    # for cl in range(4) :
+    #    ax[cl].imshow(abs(coil_sensitivities[:,:,cl]))
 
     """Gridding the individual frames"""
 
-    nPhases = 1 #the number of temporal frames looking at
-    a_frame_img = img_squeeze = np.zeros((40,192,192),dtype = 'complex_')
+    nPhases = 40 #the number of temporal frames looking at
+    a_frame_img = np.zeros((40,192,192),dtype = 'complex_')
     for i in range (nPhases):
         print(i)
 
@@ -150,7 +146,7 @@ for sl in range(noSlices) : #range 12
         trajSc = trajScale[0:2,:,:] #(2,384,13)
         del trajScale
         trajSc= tf.transpose(trajSc, perm=[2,1,0])
-        print('trajSc',np.shape(trajSc))
+    
         trajSc =  tf.reshape(trajSc , [-1 , 2])
         trajSc = tf.expand_dims(trajSc,axis=0)
         trajSc = tf.repeat(trajSc, repeats = 26, axis = 0)
@@ -163,12 +159,12 @@ for sl in range(noSlices) : #range 12
         first_time_data = tf.transpose(dataCoilSensitivities, perm=[2,0,1,3]) #(26,13,384)
         del dataCoilSensitivities
         first_time_data = tf.transpose(first_time_data, perm=[3,0,2,1])
-        print('first_time_data',np.shape(first_time_data))
+  
         first_time_data = tf.reshape(first_time_data, [26 , -1]) #(26,4992) to enter to nufft yes
 
         #weights = tfmr.estimate_density(trajSc, (192,192))
 
-        radial_weights = tfmr.radial_density(192, views=13, phases=1, spacing='sorted', domain='full', readout_os=2.0) #(1,1,4992)
+        radial_weights = tfmr.radial_density(192, views=13, phases=1, ordering='sorted', angle_range='full', readout_os=2.0) #(1,1,4992)
         #print('radial_weights',np.shape(radial_weights), 'max rad_wei', np.max(radial_weights), 'min rad_wei', np.min(radial_weights))
         radial_weights = tf.transpose(radial_weights, perm=[1,2,0]) #(1,4992,1)
         radial_weights = tf.reshape(radial_weights, [1 , -1]) #(1,4992)
@@ -201,11 +197,11 @@ plt.figure(202)
 plt.imshow(abs(coil_corr[0,2,0,:,:])) #show slice 0, coil 2, 0th frame
 print('coil_corr',coil_corr.dtype)
 
-# plt.figure(203)
-# plt.imshow(abs(coil_corr[0,2,37,:,:])) #show slice 0, coil 2, 37th frame
+plt.figure(203)
+plt.imshow(abs(coil_corr[0,2,37,:,:])) #show slice 0, coil 2, 37th frame
 
-# plt.figure(204)
-# plt.imshow(abs(coil_corr[0,2,38,:,:])) #show slice 0, coil 2, 37th frame
+plt.figure(204)
+plt.imshow(abs(coil_corr[0,2,38,:,:])) #show slice 0, coil 2, 37th frame
 
 # plt.figure(205)
 # plt.imshow(abs(coil_corr[1,2,38,:,:])) 
@@ -216,10 +212,10 @@ sum_coil = np.sum(coil_corr, axis=1)
 plt.figure(206)
 plt.imshow(abs(np.squeeze(sum_coil[0,0,:,:]))) 
 
-# plt.figure(207)
-# plt.imshow(abs(np.squeeze(sum_coil[0,14,:,:]))) 
+plt.figure(207)
+plt.imshow(abs(np.squeeze(sum_coil[0,14,:,:]))) 
 
-#sio.savemat('meas_MID00573_FID48984_rest_stack_sl_7.mat',{'img_data':sum_coil}) #CHANGE
+#sio.savemat('meas_MID00576_FID48987_ex3_stack_sl_10_11.mat',{'img_data':sum_coil}) #CHANGE
 plt.show()
 
 #         """   
