@@ -93,7 +93,7 @@ for sl in range(noSlices) :
     trajSc = tf.repeat(trajSc, repeats = 26, axis = 0)
     #scale from -pi to pi
     trajSc = (trajSc / 192) *2*np.pi 
-
+    print('trajSc',np.shape(trajSc))
     #calculate weights
     # weights = tfmr.estimate_density(trajSc, (192,192))
     # print('weights shape',np.shape(weights), 'max wei', np.max(weights), 'min wei', np.min(weights))
@@ -150,11 +150,12 @@ for sl in range(noSlices) :
         trajSc =  tf.reshape(trajSc , [-1 , 2])
         trajSc = tf.expand_dims(trajSc,axis=0)
         trajSc = tf.repeat(trajSc, repeats = 26, axis = 0)
+        print('trajSc',np.shape(trajSc))
   
         # trajSc2 = trajSc[:,i*(matrix*2*accSpokes):(i+1)*(matrix*2*accSpokes),:] #in batches of 4992. we already calculated trajSc above for all 40 frames.
         #so now just take each of the 40 frames at a time
         trajSc = (trajSc / 192) *2*np.pi #scale between -pi and pi
-        #print('trajSc2',tf.shape(trajSc), 'max traj', np.max(trajSc), 'min traj', np.min(trajSc)) #trajSc (26,4992,2) here
+        print('trajSc',tf.shape(trajSc), 'max traj', np.max(trajSc), 'min traj', np.min(trajSc)) #trajSc (26,4992,2) here
 
         first_time_data = tf.transpose(dataCoilSensitivities, perm=[2,0,1,3]) #(26,13,384)
         del dataCoilSensitivities
