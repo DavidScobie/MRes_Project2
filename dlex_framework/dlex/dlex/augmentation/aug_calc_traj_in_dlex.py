@@ -227,7 +227,8 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
         displacement=[]
         for idxdisp in range(time_crop):
             if idxdisp%10==0:
-                transform=tf.random.stateless_uniform((2,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli)
+                #transform=tf.random.stateless_uniform((2,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli)
+                transform=tf.random.stateless_uniform((1,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli)
             if idxdisp==0:
                 displacement.append(tf.cast([[0], [0]],tf.float32))
             else:
@@ -324,7 +325,7 @@ naugment=6
 stopmean=0
 for i in range(naugment):
     start=time.time()
-    x,y=wrapper_augment(mask2,image,motion=0.9,time_crop=20,regsnr=100,deterministic=1,det_counter=10,trajfile=trajfile)
+    x,y=wrapper_augment(mask2,image,motion=1.9,time_crop=20,regsnr=100,deterministic=1,det_counter=10,trajfile=trajfile)
     stop=time.time()-start
     stopmean=stopmean+stop
     #pdb.run('x,y=wrapper_augment(image,mask2)')

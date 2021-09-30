@@ -13,6 +13,7 @@ import tensorflow_nufft as tfft
 import scipy.io as sio
 import pdb
 import h5py
+import tensorflow_mri as tfmr
 
 rng = tf.random.Generator.from_seed(123, alg='philox')
 rng2 = tf.random.Generator.from_seed(1234, alg='philox')  
@@ -181,14 +182,82 @@ def awgn(data, regsnr,seed):
 #     return cpx, displacement
 
 def create_trajectory(AngleFile='/home/oj20/UCLjob/Project2/resources/traj_SpiralPerturbedOJ_section1.h5'):
+
     contents = sio.loadmat(AngleFile)
+    raw_data = contents['raw_data'] #shape (384, 13, 40, 26, 12)
+    raw_data_shape = np.shape(raw_data)
+
+    #noSlices = int(raw_data_shape[4])
+    matrix = int((raw_data_shape[0])/2)
+    nPhases = int(raw_data_shape[2])
+    accSpokes = int(raw_data_shape[1])
+    #nCoils = int(raw_data_shape[3])
     radialAngles = contents['radialAngles']
     print('radialAngles',np.shape(radialAngles))
 
+    radialAngles = np.transpose(radialAngles, (1, 0)) #permute the dimensions
+    radialAngles = radialAngles.tolist()
+
+    dimensions  = 3
+
+    trajectory = np.zeros((dimensions, int(matrix*2), int(accSpokes), int(nPhases))) #(3,384,13,40) this is number of points
+
+    for phs in range(nPhases) : #40
+        for lin in range(accSpokes) : #13 
+            ang = radialAngles[phs*accSpokes + lin] #(0:39 x 13) + (0:12), goes up to 519
+            cos_angle = math.cos(np.float64(ang))
+            sin_angle = math.sin(np.float64(ang))
+                
+            for col in range(int(matrix)*2) : #384
+                kx = (col - matrix) /2  #(0:383 - 192) /2 because of the 2x oversampling                
+                trajectory[0, col, lin, phs]=(cos_angle*kx) #fill kx up with angles. (-192:192) 
+                trajectory[1, col, lin, phs]=(sin_angle*kx) #(-192:192) 
+                trajectory[2, col, lin, phs]=0.0 #kz = 0
+
+    del sin_angle
+    del cos_angle
+    del col 
+    del phs
+    del lin  
+    del kx  
+    del radialAngles 
+    del ang  
+    
+    trajScale = np.zeros((dimensions, matrix*2, accSpokes*nPhases)) #(3,384,520)
+
+    for ph in range(nPhases) : #40
+        #dataCoilSensitivities[:,ph*accSpokes:(ph+1)*accSpokes, 0, :] = np.squeeze(sliceData[:,:,ph,:]) #remove the [...,1] dimension from the end of sliceData. 
+        # we are just reshaping here effectively
+        trajScale[:,:,ph*accSpokes:(ph+1)*accSpokes] = trajectory[:,:,:, ph] #saving the trajectory of each slice as 3D matrix instead of 4D
+
+    #reshape the trajectory data
+    trajSc = trajScale[0:2,:,:] #making it (2,384,520)
+    del trajScale
+    trajSc= tf.transpose(trajSc, perm=[2,1,0])
+    #trajSc= tf.transpose(trajSc, perm=[2,1,0]) #this is wrong!
+    trajSc =  tf.reshape(trajSc , [-1 , 2])
+    # trajSc = tf.expand_dims(trajSc,axis=0)
+    # trajSc = tf.repeat(trajSc, repeats = 26, axis = 0)
+    #scale from -pi to pi
+    trajSc = (trajSc / 192) *2*np.pi 
+    print('trajSc',np.shape(trajSc))
+
+    return trajSc
+
+
 def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis=2,time_crop=None,central_crop=128,grid_size=[192,192],regsnr=8,motion_ampli=0.5,AngleFile=None):
     
+    #load trajectory angles in
     traj = create_trajectory(AngleFile=AngleFile)
-    
+    print('traj shape is',np.shape(traj))
+
+    #get the density compensation weights
+    radial_weights = tfmr.radial_density(192, views=13*40, phases=1, ordering='sorted', angle_range='full', readout_os=2.0)
+    print('radial_weights',np.shape(radial_weights), 'max rad_wei', np.max(radial_weights), 'min rad_wei', np.min(radial_weights)) #(40,1,4992)
+    radial_weights = tf.transpose(radial_weights, perm=[1,0,2]) #(1,40,4992) CRUCIAL, IF OTHER WAY ROUND THE ORDER IS WRONG
+    radial_weights = np.squeeze(radial_weights)
+    print('radial weights shape',np.shape(radial_weights))
+
     maxrot=maxrot/180*tf.constant(math.pi) #Convert to radians
     normseed=tf.cast(seed/9223372036854775807,tf.float32) #[-1;1]
     #traj,dcw=loadtrajectory(trajfile)
@@ -262,9 +331,14 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     #Random Trajectory start point
     trajstart=tf.cast((normseed[0]+1)/2*tf.cast(tf.shape(traj)[0]-cpx_size[time_axis],tf.float32),tf.int32)
     
-    #NUFFT
-    kspace = tfft.nufft(x, traj[trajstart:(trajstart+cpx_size[time_axis]),...],transform_type='type_2', fft_direction='forward')
-    x = tfft.nufft(kspace*dcw[trajstart:(trajstart+cpx_size[time_axis]),...], traj[trajstart:(trajstart+cpx_size[time_axis]),...], grid_shape=grid_size, transform_type='type_1', fft_direction='backward')
+    #NUFFT tf.cast(trajSc,tf.float64)
+    print('traj with trajstart shape is',np.shape(traj[trajstart:(trajstart+cpx_size[time_axis]),...]))
+    #kspace = tfft.nufft(tf.cast(x,tf.complex128), tf.cast(traj[trajstart:(trajstart+cpx_size[time_axis]),...],tf.float64),transform_type='type_2', fft_direction='forward')
+    kspace = tfft.nufft(tf.cast(x,tf.complex128), tf.cast(traj,tf.float64),transform_type='type_2', fft_direction='forward')
+    print('kspace shape',np.shape(kspace))
+    print('dcw shape',np.shape(dcw))
+    #x = tfft.nufft(kspace*dcw[trajstart:(trajstart+cpx_size[time_axis]),...], traj[trajstart:(trajstart+cpx_size[time_axis]),...], grid_shape=grid_size, transform_type='type_1', fft_direction='backward')
+    x = tfft.nufft(kspace*dcw, traj, grid_shape=grid_size, transform_type='type_1', fft_direction='backward')
 
     """
     Crop
