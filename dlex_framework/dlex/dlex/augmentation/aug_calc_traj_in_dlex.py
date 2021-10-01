@@ -36,7 +36,7 @@ def loadtrajectory(trajfile):
 
 
 def wrapper_augment(imagex, imagey,
-                    gpu=1,maxrot=45.0,time_axis=2,time_crop=None,motion=0,
+                    gpu=1,maxrot=45.0,time_axis=2,time_crop=None,min_motion=0, max_motion=0,
                     central_crop=128, grid_size=[192,192],regsnr=8,deterministic=0,det_counter=10,
                     trajfile='/home/oj20/UCLjob/Project2/resources/traj_SpiralPerturbedOJ_section1.h5',
                     ):
@@ -49,18 +49,19 @@ def wrapper_augment(imagex, imagey,
       
   if gpu==1:
       with tf.device('/gpu:0'):
-          if motion>0:
-              x, y = training_augmentation_flow_withmotion((imagey, imagex), seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile,motion_ampli=motion)
+          if max_motion>0:
+              x, y = training_augmentation_flow_withmotion((imagey, imagex), seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile,min_motion_ampli=min_motion,max_motion_ampli=max_motion)
           else:
               x, y = training_augmentation_flow((imagey, imagex), seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile)
   else:
-      if motion>0:
-              x, y = training_augmentation_flow_withmotion((imagey, imagex), seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile,motion_ampli=motion)
+      if max_motion>0:
+              x, y = training_augmentation_flow_withmotion((imagey, imagex), seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile,min_motion_ampli=min_motion,max_motion_ampli=max_motion)
       else:
               x, y = training_augmentation_flow((imagey, imagex), seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile)
 
   return x, y
 
+#augmentations applied to x and y, then x is undersampled at the end
 def training_augmentation_flow(image_label,seed,maxrot=45.0,time_axis=2,time_crop=None,central_crop=128,grid_size=[192,192],regsnr=8,trajfile='/home/oj20/UCLjob/Project2/resources/traj_SpiralPerturbedOJ_section1.h5'):
 
     maxrot=maxrot/180*tf.constant(math.pi) #Convert to radians
@@ -182,11 +183,11 @@ def awgn(data, regsnr,seed):
 #     return cpx, displacement
 
 
+#image_label is (image_y, image_x) which are both y in this case
+def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis=2,time_crop=None,central_crop=128,grid_size=[192,192],regsnr=8,min_motion_ampli=0,max_motion_ampli=0,trajfile='/home/oj20/UCLjob/Project2/resources/traj_SpiralPerturbedOJ_section1.h5'):
 
-def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis=2,time_crop=None,central_crop=128,grid_size=[192,192],regsnr=8,motion_ampli=0.5,trajfile='/home/oj20/UCLjob/Project2/resources/traj_SpiralPerturbedOJ_section1.h5'):
-    
-    maxrot=maxrot/180*tf.constant(math.pi) #Convert to radians
-    normseed=tf.cast(seed/9223372036854775807,tf.float32) #[-1;1]
+    normseed=tf.cast(seed/9223372036854775807,tf.float32) #random numbers in this range [-1;1]
+    print('normseed',normseed) #
     traj,dcw=loadtrajectory(trajfile)
     print('traj shape is',np.shape(traj))
     y,x= image_label
@@ -221,14 +222,20 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     
     #MOTION
     #ApplyMotion on 50% of data (exercise vs rest)
-    cpx=tf.transpose(cpx,[3,1,2,0])
+    cpx=tf.transpose(cpx,[3,1,2,0]) #what is cpx?
     global augment_counter
+    #random motion amplitude inbetween specified limits
+    motion_ampli = tf.random.uniform([1],minval=min_motion_ampli,maxval=max_motion_ampli,dtype=tf.dtypes.float32,seed=None,name=None)
+    print(motion_ampli)
     if augment_counter%2==1:
         displacement=[]
         for idxdisp in range(time_crop):
             if idxdisp%10==0:
-                #transform=tf.random.stateless_uniform((2,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli)
-                transform=tf.random.stateless_uniform((1,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli)
+                #transform=tf.random.stateless_uniform((2,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli) #shift in 2 dimensions
+                transform=tf.random.stateless_uniform((1,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli) #shift in 1 dimension
+                #transform = tf.keras.preprocessing.image.apply_affine_transform(
+                    # x, theta=0, tx=0, ty=0, shear=0, zx=1, zy=1, row_axis=0, col_axis=1,
+                    # channel_axis=2, fill_mode='nearest', cval=0.0, order=1)
             if idxdisp==0:
                 displacement.append(tf.cast([[0], [0]],tf.float32))
             else:
@@ -238,6 +245,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
         cpx=tfa.image.translate(cpx,transform,'bilinear' )
         
     #ROTATION
+    maxrot=maxrot/180*tf.constant(math.pi) #Convert to radians.
     cpx=tfa.image.rotate(cpx, angles=(normseed[0])*maxrot+maxrot,interpolation='bilinear')
     #Crop to original size (before rotation)
     cpx=cpx[:,cpx_size[0]//2-image_size[0]//2:(cpx_size[0]//2-image_size[0]//2+image_size[0]),
@@ -260,7 +268,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     #Random Trajectory start point
     trajstart=tf.cast((normseed[0]+1)/2*tf.cast(tf.shape(traj)[0]-cpx_size[time_axis],tf.float32),tf.int32)
     
-    #NUFFT  First a forward transform and then a backward transform
+    #NUFFT  First a forward transform and then a backward transform ONLY DOING THIS TO x
     print('traj with trajstart shape is',np.shape(traj[trajstart:(trajstart+cpx_size[time_axis]),...]))
     kspace = tfft.nufft(x, traj[trajstart:(trajstart+cpx_size[time_axis]),...],transform_type='type_2', fft_direction='forward') 
     print('kspace shape',np.shape(kspace))
@@ -325,7 +333,8 @@ naugment=6
 stopmean=0
 for i in range(naugment):
     start=time.time()
-    x,y=wrapper_augment(mask2,image,motion=1.9,time_crop=20,regsnr=100,deterministic=1,det_counter=10,trajfile=trajfile)
+    #mask2 and image are the same in this case (both are y) 
+    x,y=wrapper_augment(mask2,image,min_motion=1,max_motion=5,time_crop=20,regsnr=100,deterministic=1,det_counter=10,trajfile=trajfile)
     stop=time.time()-start
     stopmean=stopmean+stop
     #pdb.run('x,y=wrapper_augment(image,mask2)')
