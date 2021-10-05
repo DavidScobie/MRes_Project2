@@ -27,7 +27,7 @@ number_files = len(list)
 # number_files = 4
 print(number_files)
 
-model = load_model('./fi_SAX_rest_and_trans_aug_40_y_only_chk_new_gridder/model.h5')
+model = load_model('./SAX_rest_and_trans_aug_40_y_only_tfft_gridder_tfmr061/model_64.h5')
 # model = load_model('../multiple_orientations_20/fi_2dssim_optim_mse_L2_mul_ori/model.h5')
 model.summary()
 
@@ -90,7 +90,7 @@ test_pred_np = tf.make_ndarray(tf.make_tensor_proto(test_pred))
 # PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 
-sio.savemat('fi_SAX_rest_and_trans_aug_40_y_only_chk_new_gridder_ex3_prosp_new_grid.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
+#sio.savemat('SAX_rest_and_trans_aug_40_y_only_tfft_gridder_tfmr061_ex3_prosp_new_grid.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
 
 plt.show()
 

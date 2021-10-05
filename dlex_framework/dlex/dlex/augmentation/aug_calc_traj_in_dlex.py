@@ -187,9 +187,9 @@ def awgn(data, regsnr,seed):
 def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis=2,time_crop=None,central_crop=128,grid_size=[192,192],regsnr=8,min_motion_ampli=0,max_motion_ampli=0,trajfile='/home/oj20/UCLjob/Project2/resources/traj_SpiralPerturbedOJ_section1.h5'):
 
     normseed=tf.cast(seed/9223372036854775807,tf.float32) #random numbers in this range [-1;1]
-    print('normseed',normseed) #
+    #print('normseed',normseed) #
     traj,dcw=loadtrajectory(trajfile)
-    print('traj shape is',np.shape(traj))
+    #print('traj shape is',np.shape(traj))
     y,x= image_label
     
     y=tf.transpose(y,perm=(1,2,0))
@@ -210,7 +210,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     #Flip/Roll
     cpx=tf.image.stateless_random_flip_left_right(cpx, seed=seed)
     cpx=tf.image.stateless_random_flip_up_down(cpx, seed=seed)
-    cpx=tf.roll(cpx, shift=tf.cast(normseed[0]*image_size_float[time_axis],tf.int32) , axis=time_axis)
+    cpx=tf.roll(cpx, shift=tf.cast(normseed[0]*image_size_float[time_axis],tf.int32) , axis=time_axis) #this may be the key line
     #time_crop
     if time_crop is not None:
         #works for time_axis=2
@@ -226,23 +226,38 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     global augment_counter
     #random motion amplitude inbetween specified limits
     motion_ampli = tf.random.uniform([1],minval=min_motion_ampli,maxval=max_motion_ampli,dtype=tf.dtypes.float32,seed=None,name=None)
-    print(motion_ampli)
-    if augment_counter%2==1:
+    #print('motion_ampli',motion_ampli)
+    print('augment_counter',augment_counter)
+    if augment_counter%2==1: #if it is even
+        
         displacement=[]
-        for idxdisp in range(time_crop):
-            if idxdisp%10==0:
+        for idxdisp in range(time_crop): #40
+            print('idxdisp',idxdisp)
+            if idxdisp%40==0:               
                 #transform=tf.random.stateless_uniform((2,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli) #shift in 2 dimensions
                 transform=tf.random.stateless_uniform((1,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli) #shift in 1 dimension
-                #transform = tf.keras.preprocessing.image.apply_affine_transform(
-                    # x, theta=0, tx=0, ty=0, shear=0, zx=1, zy=1, row_axis=0, col_axis=1,
-                    # channel_axis=2, fill_mode='nearest', cval=0.0, order=1)
+                print('transform',transform)
+            sin_point = 20*float(transform)*np.sin((idxdisp/time_crop)*2*np.pi)
+            #sin_point = 20*np.sin((idxdisp/time_crop)*2*np.pi)
+            #this gives you a random number between the min and max amplitudes
+            #print('seed',seed)
+            #print('transform',transform)
             if idxdisp==0:
-                displacement.append(tf.cast([[0], [0]],tf.float32))
-            else:
-                displacement.append(transform+displacement[idxdisp-1])
-        displacement=tf.stack(displacement)
-        transform=tf.squeeze(displacement)
-        cpx=tfa.image.translate(cpx,transform,'bilinear' )
+                displacement.append(tf.cast([[0],[0]],tf.float32)) #this is to get the initial zeros at the start
+                #displacement.append(0)
+            # else:
+                #displacement.append(transform+displacement[idxdisp-1]) #add on the same random number 20 times
+            #print('sin_point in',sin_point)
+            displacement.append(tf.cast([[sin_point],[sin_point]],tf.float32))
+            #displacement.append(sin_point)
+            #print('displacement in',displacement)
+        #print('sin_point',sin_point)
+        displacement=tf.stack(displacement) #shape(20,2,1) values from 0 to -20.
+        #print('displacement',displacement)
+        transform=tf.squeeze(displacement) #shape(20,2) values from 0 to -20
+        #print('squeezed transform',transform)
+        #cpx size (20,192,192,2). this translates the cpx by the transform
+        cpx=tfa.image.translate(cpx,transform[:-1,:],'bilinear' ) #image:cpx. transaltion:transform. interpolation mode: bilinear
         
     #ROTATION
     maxrot=maxrot/180*tf.constant(math.pi) #Convert to radians.
@@ -269,10 +284,10 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     trajstart=tf.cast((normseed[0]+1)/2*tf.cast(tf.shape(traj)[0]-cpx_size[time_axis],tf.float32),tf.int32)
     
     #NUFFT  First a forward transform and then a backward transform ONLY DOING THIS TO x
-    print('traj with trajstart shape is',np.shape(traj[trajstart:(trajstart+cpx_size[time_axis]),...]))
+    #print('traj with trajstart shape is',np.shape(traj[trajstart:(trajstart+cpx_size[time_axis]),...]))
     kspace = tfft.nufft(x, traj[trajstart:(trajstart+cpx_size[time_axis]),...],transform_type='type_2', fft_direction='forward') 
-    print('kspace shape',np.shape(kspace))
-    print('dcw shape',np.shape(dcw))
+    #print('kspace shape',np.shape(kspace))
+    #print('dcw shape',np.shape(dcw))
     x = tfft.nufft(kspace*dcw[trajstart:(trajstart+cpx_size[time_axis]),...], traj[trajstart:(trajstart+cpx_size[time_axis]),...], grid_shape=grid_size, transform_type='type_1', fft_direction='backward')
 
     """
@@ -329,12 +344,12 @@ image=ori['y']
 mask2=ori['y']
 #image=(img[0,:,:,:]+1j*img[1,:,:,:])/np.max(img)
 #ys=np.concatenate((tf.abs(image[32:160,32:160,1])+mask2[32:160,32:160,1],(tf.math.angle(image[32:160,32:160,1])+np.pi)/(2*np.pi)),axis=1)
-naugment=6
+naugment=2 #it seems that this determines the range that augment_counter goes up to. Only works if left at 6.
 stopmean=0
-for i in range(naugment):
+for i in range(naugment): #6
     start=time.time()
     #mask2 and image are the same in this case (both are y) 
-    x,y=wrapper_augment(mask2,image,min_motion=1,max_motion=5,time_crop=20,regsnr=100,deterministic=1,det_counter=10,trajfile=trajfile)
+    x,y=wrapper_augment(mask2,image,min_motion=1,max_motion=5,time_crop=40,regsnr=100,deterministic=1,det_counter=10,trajfile=trajfile)
     stop=time.time()-start
     stopmean=stopmean+stop
     #pdb.run('x,y=wrapper_augment(image,mask2)')
