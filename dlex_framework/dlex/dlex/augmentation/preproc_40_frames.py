@@ -3,46 +3,55 @@
 #the starting phase of the heart is also randomised
 import h5py
 import numpy as np
-# SAXALLDATA = h5py.File('/media/sf_ML_work/paper_data_mat_files/SAXdataAll.mat', 'r')
-# print(SAXALLDATA.keys())
-# print(type(SAXALLDATA["new_dat_final"][:]))
-# print(SAXALLDATA["new_dat_final"][...])
-# SAXALLDATA["new_dat_final"][:]
-# new_dat_final = np.array(SAXALLDATA["new_dat_final"][:])
-# print(new_dat_final)
+from scipy.interpolate import RegularGridInterpolator
+import PlotUtils
+import matplotlib.pyplot as plt
 
-# import hdf5storage
-# mat = hdf5storage.loadmat('/media/sf_ML_work/paper_data_mat_files/SAXdataAll.mat')
-# print(np.shape(mat["new_dat_final"][0]))
-
-import h5py
 file='/media/sf_ML_work/paper_data_mat_files/SAXdataAll.mat'
 with h5py.File(file, 'r+') as f:
     print(f.keys())
     new_dat_final = f['new_dat_final']
-    ab=f[new_dat_final[0, 0]][:]
-print(np.shape(ab))
-print(np.amax(ab))
+    one_data=f[new_dat_final[0, 0]][:]
+
+one_data = np.transpose(one_data, (1, 2, 0))
+one_data_dims = np.shape(one_data)
+nFrames = one_data_dims[2]
+print('nFrames',nFrames)
+x = y = x1 = y1 = np.linspace(0,191,192)
+z = np.linspace(0,nFrames-1,nFrames)
+print('z',z)
+accel = 2
+spacing = (nFrames-1)/((nFrames/accel)-1)
+print('spacing',spacing)
+N = (nFrames)/spacing
+print('N',N)
+z1 = np.linspace(0,nFrames-1,num=int(N))
+print('z1',z1)
+print(one_data_dims)
+my_interpolating_function = RegularGridInterpolator((x, y, z), one_data)
+#pts = (x1,y1,z1)
+pts = ([[92,96,10.7],[3,5,7]])
+gridded_dat = my_interpolating_function(pts)
+print(gridded_dat)
+print(np.shape(gridded_dat))
+print(one_data[92,96,10],one_data[92,96,11]) #the interpolator semas to be working. Just need to put all points through
+
+#this seems like a very slow way of doing it. but check it works before optimising
+grid_dat_list = np.zeros((192,192,8))
+for i in range (192):
+    for j in range (192):
+        for k in range (8):
+            grid_dat_list[i,j,k] = my_interpolating_function([x1[i],y1[j],z1[k]])
 
 
-
-# import numpy as np
-# import h5py
-# # f = h5py.File('somefile.mat','r')
-# data = SAXALLDATA.get('new_dat_final')
-# print(data)
-# data = np.array(data) # For converting to a NumPy array
-# print(data)
-
-# hf = h5py.File('path/to/file.h5', 'r')
-# n1 = np.array(hf["dataset_name"][:]) #dataset_name is same as hdf5 object name 
-
-# rr_int = SAXALLDATA['rr_int']
-
-# n_d_f_0 = new_dat_final[0]
-# print(n_d_f_0)
-# rr_0 = rr_int[0]
-# print(rr_0)
-
+PlotUtils.plotVid(grid_dat_list,axis=0,vmax=1)
+#plt.show()
+"""
+print('x1',np.shape(x1),'y1',np.shape(y1),'z1',np.shape(z1))
+end_grid = np.meshgrid(x1,y1,z1)
+arr_end_grid = np.array(end_grid)
+print(np.shape(arr_end_grid))
+print(arr_end_grid[0:1,0:5,0:5,0:1])
+"""
 
 
