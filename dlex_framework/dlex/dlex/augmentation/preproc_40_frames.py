@@ -37,14 +37,21 @@ print(np.shape(gridded_dat))
 print(one_data[92,96,10],one_data[92,96,11]) #the interpolator semas to be working. Just need to put all points through
 
 #this seems like a very slow way of doing it. but check it works before optimising
-grid_dat_list = np.zeros((192,192,8))
+grid_dat = np.zeros((192,192,8))
 for i in range (192):
     for j in range (192):
         for k in range (8):
-            grid_dat_list[i,j,k] = my_interpolating_function([x1[i],y1[j],z1[k]])
+            grid_dat[i,j,k] = my_interpolating_function([x1[i],y1[j],z1[k]])
 
+grid_dat = np.transpose(grid_dat, (2,0,1))
+print('grid_dat',np.shape(grid_dat),'max grid_dat',np.amax(grid_dat))
+normed_grid_dat = grid_dat/np.amax(grid_dat)
 
-PlotUtils.plotVid(grid_dat_list,axis=0,vmax=1)
+one_data = np.transpose(one_data, (2,0,1))
+normed_one_data = one_data/np.amax(one_data)
+
+PlotUtils.plotVid(normed_one_data,axis=0,vmax=1)
+PlotUtils.plotVid(normed_grid_dat,axis=0,vmax=1)
 #plt.show()
 """
 print('x1',np.shape(x1),'y1',np.shape(y1),'z1',np.shape(z1))

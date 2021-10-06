@@ -365,6 +365,7 @@ stopmean=stopmean/naugment
 print('Mean time:',stopmean,'\n Last time:',stop)
 # PlotUtils.plotXd(ys,vmax=1,vmin=0)
 imgx=np.concatenate((x,y),axis=1)
+print('imgx',np.shape(imgx),'max imgx',np.amax(imgx))
 PlotUtils.plotVid(imgx,axis=0,vmax=1)
 
 
