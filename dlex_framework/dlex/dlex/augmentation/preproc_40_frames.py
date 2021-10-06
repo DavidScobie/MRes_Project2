@@ -18,8 +18,10 @@ with h5py.File(file, 'r+') as f:
 one_data = np.transpose(one_data, (1, 2, 0))
 one_data_dims = np.shape(one_data)
 nFrames = one_data_dims[2]
+matrix = one_data_dims[0]
+time_crop = 40
 print('nFrames',nFrames)
-x = y = x1 = y1 = np.linspace(0,191,192)
+x = y = x1 = y1 = np.linspace(0,matrix-1,matrix)
 z = np.linspace(0,nFrames-1,nFrames)
 print('z',z)
 accel = 3
@@ -33,9 +35,9 @@ print(one_data_dims)
 my_interpolating_function = RegularGridInterpolator((x, y, z), one_data)
 
 #interpolating over time
-grid_dat = np.zeros((192,192,len(z1)))
-for i in range (192):
-    for j in range (192):
+grid_dat = np.zeros((matrix,matrix,len(z1)))
+for i in range (matrix):
+    for j in range (matrix):
         for k in range (len(z1)):
             grid_dat[i,j,k] = my_interpolating_function([x1[i],y1[j],z1[k]])
 
@@ -48,21 +50,20 @@ one_data = np.transpose(one_data, (2,0,1))
 normed_one_data = one_data/np.amax(one_data)
 
 #repeating the data out to 40 frames and take random starting phase
-num_repetitions = np.ceil(120/len(z1)) #always 120 frames before cutting
+num_repetitions = np.ceil((3*time_crop)/len(z1)) #always 120 frames before cutting
 print('num_repetitions',num_repetitions)
 rep_normed_grid_dat  = np.tile(normed_grid_dat,(int(num_repetitions),1,1)) # in there for random starting frame
 print('rep_normed_grid_dat',np.shape(rep_normed_grid_dat))
 
-rand_start_frame = np.random.randint(0,high=39) 
-frame_40_rand_start = rep_normed_grid_dat[rand_start_frame:rand_start_frame + 40, :, :]
-print('rand_start_frame',rand_start_frame,'frame_40_rand_start',np.shape(frame_40_rand_start))
+rand_start_frame = np.random.randint(0,high = time_crop - 1) 
+time_crop_rand_start = rep_normed_grid_dat[rand_start_frame:rand_start_frame + time_crop, :, :]
 
-print('diff between frames',np.amax(rep_normed_grid_dat[7,:,:]-rep_normed_grid_dat[2,:,:]))
-
-print('check if vid starts at rand frame',np.amax(frame_40_rand_start[0,:,:]-rep_normed_grid_dat[rand_start_frame,:,:]))
+print('rand_start_frame',rand_start_frame,'time_crop_rand_start',np.shape(time_crop_rand_start))
+print('diff between frames',np.amax(rep_normed_grid_dat[3+len(z1),:,:]-rep_normed_grid_dat[3,:,:]))
+print('check if vid starts at rand frame',np.amax(time_crop_rand_start[0,:,:]-rep_normed_grid_dat[rand_start_frame,:,:]))
 
 PlotUtils.plotVid(normed_one_data,axis=0,vmax=1)
 PlotUtils.plotVid(normed_grid_dat,axis=0,vmax=1)
 PlotUtils.plotVid(rep_normed_grid_dat,axis=0,vmax=1)
-PlotUtils.plotVid(frame_40_rand_start,axis=0,vmax=1)
+PlotUtils.plotVid(time_crop_rand_start,axis=0,vmax=1)
 

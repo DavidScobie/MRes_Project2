@@ -10,7 +10,7 @@ import tensorflow_addons as tfa
 import math
 import time
 import tensorflow_nufft as tfft
-
+from scipy.interpolate import RegularGridInterpolator
 import pdb
 import h5py
 
@@ -235,28 +235,15 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
         for idxdisp in range(time_crop): #40
             print('idxdisp',idxdisp)
             if idxdisp%40==0:               
-                #transform=tf.random.stateless_uniform((2,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli) #shift in 2 dimensions
                 transform=tf.random.stateless_uniform((1,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli) #shift in 1 dimension
                 print('transform',transform)
             sin_point = 20*float(transform)*np.sin((idxdisp/time_crop)*2*np.pi)
-            #sin_point = 20*np.sin((idxdisp/time_crop)*2*np.pi)
             #this gives you a random number between the min and max amplitudes
-            #print('seed',seed)
-            #print('transform',transform)
             if idxdisp==0:
                 displacement.append(tf.cast([[0],[0]],tf.float32)) #this is to get the initial zeros at the start
-                #displacement.append(0)
-            # else:
-                #displacement.append(transform+displacement[idxdisp-1]) #add on the same random number 20 times
-            #print('sin_point in',sin_point)
             displacement.append(tf.cast([[sin_point],[sin_point]],tf.float32))
-            #displacement.append(sin_point)
-            #print('displacement in',displacement)
-        #print('sin_point',sin_point)
         displacement=tf.stack(displacement) #shape(20,2,1) values from 0 to -20.
-        #print('displacement',displacement)
         transform=tf.squeeze(displacement) #shape(20,2) values from 0 to -20
-        #print('squeezed transform',transform)
         #cpx size (20,192,192,2). this translates the cpx by the transform
         cpx=tfa.image.translate(cpx,transform[:-1,:],'bilinear' ) #image:cpx. transaltion:transform. interpolation mode: bilinear
         
@@ -330,6 +317,44 @@ def load_data(file=None):
         one_data=f[new_dat_final[5, 0]][:]
     return one_data
 
+def interpolate_in_time(one_data, accel = 1, time_crop=None):
+    #defining an acceleration factor and defining arrays for interpolation
+    one_data = np.transpose(one_data, (1, 2, 0))
+    one_data_dims = np.shape(one_data)
+    nFrames = one_data_dims[2]
+    matrix = one_data_dims[0]
+    x = y = x1 = y1 = np.linspace(0,matrix-1,matrix)
+    z = np.linspace(0,nFrames-1,nFrames)
+    spacing = (nFrames-1)/((nFrames/accel)-1)
+    N = (nFrames)/spacing
+    z1 = np.linspace(0,nFrames-1,num=int(N))
+    my_interpolating_function = RegularGridInterpolator((x, y, z), one_data)
+
+    #interpolating over time
+    grid_dat = np.zeros((matrix,matrix,len(z1)))
+    for i in range (matrix):
+        for j in range (matrix):
+            for k in range (len(z1)):
+                grid_dat[i,j,k] = my_interpolating_function([x1[i],y1[j],z1[k]])
+
+    #transposing and normalising for plotting
+    grid_dat = np.transpose(grid_dat, (2,0,1))
+    normed_grid_dat = grid_dat/np.amax(grid_dat)
+
+    one_data = np.transpose(one_data, (2,0,1))
+    normed_one_data = one_data/np.amax(one_data)
+
+    #repeating the data out to 40 frames and take random starting phase
+    num_repetitions = np.ceil((3*time_crop)/len(z1)) #always 120 frames before cutting
+    rep_normed_grid_dat  = np.tile(normed_grid_dat,(int(num_repetitions),1,1)) # in there for random starting frame
+
+    rand_start_frame = np.random.randint(0,high = time_crop - 1) 
+    time_crop_rand_start = rep_normed_grid_dat[rand_start_frame:rand_start_frame + time_crop, :, :]
+
+    PlotUtils.plotVid(normed_one_data,axis=0,vmax=1)
+    PlotUtils.plotVid(time_crop_rand_start,axis=0,vmax=1)
+    return time_crop_rand_start
+
 #Quick Test
 import h5py
 import numpy as np
@@ -353,12 +378,16 @@ print('image old way',np.shape(image))
 image = load_data(file='/media/sf_ML_work/paper_data_mat_files/SAXdataAll.mat')
 print('image',np.shape(image))
 
+#interpolate data to 40 frames with specified accleration factor and start off at random initial temporal frame
+time_crop = 40
+image = interpolate_in_time(image, accel = 3, time_crop=time_crop)
+
 naugment=2 #it seems that this determines the range that augment_counter goes up to. 
 stopmean=0
 for i in range(naugment): #6
     start=time.time()
     #mask2 and image are the same in this case (both are y) 
-    x,y=wrapper_augment(image,min_motion=1,max_motion=5,time_crop=40,regsnr=100,deterministic=1,det_counter=10,trajfile=trajfile)
+    x,y=wrapper_augment(image,min_motion=1,max_motion=5,time_crop=time_crop,regsnr=100,deterministic=1,det_counter=10,trajfile=trajfile)
     stop=time.time()-start
     stopmean=stopmean+stop
     #pdb.run('x,y=wrapper_augment(image,mask2)')
