@@ -12,7 +12,7 @@ file='/media/sf_ML_work/paper_data_mat_files/SAXdataAll.mat'
 with h5py.File(file, 'r+') as f:
     print(f.keys())
     new_dat_final = f['new_dat_final']
-    one_data=f[new_dat_final[0, 0]][:]
+    one_data=f[new_dat_final[5, 0]][:]
 
 #defining an acceleration factor and defining arrays for interpolation
 one_data = np.transpose(one_data, (1, 2, 0))
@@ -31,9 +31,6 @@ z1 = np.linspace(0,nFrames-1,num=int(N))
 print('z1',z1)
 print(one_data_dims)
 my_interpolating_function = RegularGridInterpolator((x, y, z), one_data)
-#pts = (x1,y1,z1)
-pts = ([[92,96,10.7],[3,5,7]])
-gridded_dat = my_interpolating_function(pts)
 
 #interpolating over time
 grid_dat = np.zeros((192,192,len(z1)))

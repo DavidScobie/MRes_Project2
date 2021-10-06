@@ -35,7 +35,7 @@ def loadtrajectory(trajfile):
 #loadtrajectory('/home/oj20/UCLjob/Project2/resources/traj_SpiralPerturbedOJ_section1.h5')
 
 
-def wrapper_augment(imagex, imagey,
+def wrapper_augment(imagey,
                     gpu=1,maxrot=45.0,time_axis=2,time_crop=None,min_motion=0, max_motion=0,
                     central_crop=128, grid_size=[192,192],regsnr=8,deterministic=0,det_counter=10,
                     trajfile='/home/oj20/UCLjob/Project2/resources/traj_SpiralPerturbedOJ_section1.h5',
@@ -50,14 +50,14 @@ def wrapper_augment(imagex, imagey,
   if gpu==1:
       with tf.device('/gpu:0'):
           if max_motion>0:
-              x, y = training_augmentation_flow_withmotion((imagey, imagex), seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile,min_motion_ampli=min_motion,max_motion_ampli=max_motion)
+              x, y = training_augmentation_flow_withmotion(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile,min_motion_ampli=min_motion,max_motion_ampli=max_motion)
           else:
-              x, y = training_augmentation_flow((imagey, imagex), seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile)
+              x, y = training_augmentation_flow(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile)
   else:
       if max_motion>0:
-              x, y = training_augmentation_flow_withmotion((imagey, imagex), seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile,min_motion_ampli=min_motion,max_motion_ampli=max_motion)
+              x, y = training_augmentation_flow_withmotion(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile,min_motion_ampli=min_motion,max_motion_ampli=max_motion)
       else:
-              x, y = training_augmentation_flow((imagey, imagex), seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile)
+              x, y = training_augmentation_flow(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile)
 
   return x, y
 
@@ -190,7 +190,8 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     #print('normseed',normseed) #
     traj,dcw=loadtrajectory(trajfile)
     #print('traj shape is',np.shape(traj))
-    y,x= image_label
+    x= image_label
+    y = image_label
     
     y=tf.transpose(y,perm=(1,2,0))
     
@@ -322,7 +323,12 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     
     return x,y
 
-
+def load_data(file=None):
+    with h5py.File(file, 'r+') as f:
+        print(f.keys())
+        new_dat_final = f['new_dat_final']
+        one_data=f[new_dat_final[5, 0]][:]
+    return one_data
 
 #Quick Test
 import h5py
@@ -341,15 +347,14 @@ filename=fdata + dataplot + '.h5'
 
 ori= h5py.File(filename, 'r')
 image=ori['y']
-mask2=ori['y']
 #image=(img[0,:,:,:]+1j*img[1,:,:,:])/np.max(img)
 #ys=np.concatenate((tf.abs(image[32:160,32:160,1])+mask2[32:160,32:160,1],(tf.math.angle(image[32:160,32:160,1])+np.pi)/(2*np.pi)),axis=1)
-naugment=2 #it seems that this determines the range that augment_counter goes up to. Only works if left at 6.
+naugment=2 #it seems that this determines the range that augment_counter goes up to. 
 stopmean=0
 for i in range(naugment): #6
     start=time.time()
     #mask2 and image are the same in this case (both are y) 
-    x,y=wrapper_augment(mask2,image,min_motion=1,max_motion=5,time_crop=40,regsnr=100,deterministic=1,det_counter=10,trajfile=trajfile)
+    x,y=wrapper_augment(image,min_motion=1,max_motion=5,time_crop=40,regsnr=100,deterministic=1,det_counter=10,trajfile=trajfile)
     stop=time.time()-start
     stopmean=stopmean+stop
     #pdb.run('x,y=wrapper_augment(image,mask2)')
