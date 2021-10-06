@@ -12,7 +12,7 @@ file='/media/sf_ML_work/paper_data_mat_files/SAXdataAll.mat'
 with h5py.File(file, 'r+') as f:
     print(f.keys())
     new_dat_final = f['new_dat_final']
-    one_data=f[new_dat_final[5, 0]][:]
+    one_data=f[new_dat_final[0, 0]][:]
 
 #defining an acceleration factor and defining arrays for interpolation
 one_data = np.transpose(one_data, (1, 2, 0))
@@ -47,10 +47,22 @@ normed_grid_dat = grid_dat/np.amax(grid_dat)
 one_data = np.transpose(one_data, (2,0,1))
 normed_one_data = one_data/np.amax(one_data)
 
-#repeating the data out to 40 frames
-rep_normed_grid_dat  = np.repeat(normed_grid_dat,np.ceil(40/len(z1)),axis=0)
+#repeating the data out to 40 frames and take random starting phase
+num_repetitions = np.ceil(120/len(z1)) #always 120 frames before cutting
+print('num_repetitions',num_repetitions)
+rep_normed_grid_dat  = np.tile(normed_grid_dat,(int(num_repetitions),1,1)) # in there for random starting frame
 print('rep_normed_grid_dat',np.shape(rep_normed_grid_dat))
+
+rand_start_frame = np.random.randint(0,high=39) 
+frame_40_rand_start = rep_normed_grid_dat[rand_start_frame:rand_start_frame + 40, :, :]
+print('rand_start_frame',rand_start_frame,'frame_40_rand_start',np.shape(frame_40_rand_start))
+
+print('diff between frames',np.amax(rep_normed_grid_dat[7,:,:]-rep_normed_grid_dat[2,:,:]))
+
+print('check if vid starts at rand frame',np.amax(frame_40_rand_start[0,:,:]-rep_normed_grid_dat[rand_start_frame,:,:]))
 
 PlotUtils.plotVid(normed_one_data,axis=0,vmax=1)
 PlotUtils.plotVid(normed_grid_dat,axis=0,vmax=1)
+PlotUtils.plotVid(rep_normed_grid_dat,axis=0,vmax=1)
+PlotUtils.plotVid(frame_40_rand_start,axis=0,vmax=1)
 

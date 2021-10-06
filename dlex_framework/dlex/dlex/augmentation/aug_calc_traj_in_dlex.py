@@ -347,8 +347,12 @@ filename=fdata + dataplot + '.h5'
 
 ori= h5py.File(filename, 'r')
 image=ori['y']
-#image=(img[0,:,:,:]+1j*img[1,:,:,:])/np.max(img)
-#ys=np.concatenate((tf.abs(image[32:160,32:160,1])+mask2[32:160,32:160,1],(tf.math.angle(image[32:160,32:160,1])+np.pi)/(2*np.pi)),axis=1)
+print('image old way',np.shape(image))
+
+#loading data in from .mat file
+image = load_data(file='/media/sf_ML_work/paper_data_mat_files/SAXdataAll.mat')
+print('image',np.shape(image))
+
 naugment=2 #it seems that this determines the range that augment_counter goes up to. 
 stopmean=0
 for i in range(naugment): #6
