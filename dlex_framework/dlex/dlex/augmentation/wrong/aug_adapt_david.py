@@ -272,19 +272,46 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     #Random Trajectory start point
     print('traj',np.shape(traj),'cpx size',cpx_size,'normseed',normseed[0],'time_axis',time_axis)
 
-    traj = tfmr.radial_trajectory(192, views=13*40, phases=1, ordering='sorted', angle_range='full', readout_os=1.0)
-    print('new traj',np.shape(traj))
+    #MODIFY THIS SO THAT IT HAS VIEWS=13*40 AGAIN. NEED TO RESHAPE TO GET THE 40 BATCH SIZE AFTER SO THAT IT WORKS WITH NUFFT
+
+    traj = tfmr.radial_trajectory(192, views=13, phases=1, ordering='sorted', angle_range='full', readout_os=2.0)
+    print('new traj',np.shape(traj)) #(1, 13, 384, 2)
+    print('x',np.shape(x)) #(40,192,192)
     #radial_weights = tfmr.radial_density(192, views=13*40, phases=1, ordering='sorted', angle_range='full', readout_os=2.0)
 
     # trajstart=tf.cast((normseed[0]+1)/2*tf.cast(tf.shape(traj)[0]-cpx_size[time_axis],tf.float32),tf.int32) #this is 0. dont want to randomise trajectory
     # print('trajstart',np.shape(trajstart),trajstart)
     #NUFFT  First a forward transform and then a backward transform ONLY DO THIS TO X.
+
     #kspace = tfft.nufft(x, traj[trajstart:(trajstart+cpx_size[time_axis]),...],transform_type='type_2', fft_direction='forward') 
-    kspace = tfft.nufft(x, traj[0:(0+cpx_size[time_axis])],transform_type='type_2', fft_direction='forward') #cpx_size[time_axis]=40
+    #kspace = tfft.nufft(x, traj[0:(0+cpx_size[time_axis])],transform_type='type_2', fft_direction='forward') #cpx_size[time_axis]=40
+    traj = tf.reshape(traj, [-1 , 2]) #(4992,2)
+    print('new reshaped traj',np.shape(traj), 'max traj', np.max(traj), 'min traj', np.min(traj))
+    kspace = tfft.nufft(x, traj,transform_type='type_2', fft_direction='forward')
+    print('kspace',np.shape(kspace)) #(40,4992)
+    kspace = tf.reshape(kspace, [1 , -1]) #(1,199680)
+
+    #need to find dcw
+    radial_weights = tfmr.radial_density(192, views=13*40, phases=1, ordering='sorted', angle_range='full', readout_os=2.0)
+    print('radial_weights',np.shape(radial_weights), 'max rad_wei', np.max(radial_weights), 'min rad_wei', np.min(radial_weights)) #(40,1,4992)
+    radial_weights = tf.transpose(radial_weights, perm=[1,0,2]) #(1,40,4992) CRUCIAL, IF OTHER WAY ROUND THE ORDER IS WRONG
+    radial_weights = tf.reshape(radial_weights, [1 , -1]) #(1,199680)
+
+    dcw_kspace = kspace / tf.cast(radial_weights,dtype=tf.complex64)
+    print('dcw_kspace',np.shape(dcw_kspace)) #(1,199680)
+    dcw_kspace = tf.reshape(dcw_kspace, [40 , 4992])
+
     #print('kspace shape',np.shape(kspace))
     #print('dcw shape',np.shape(dcw))
-    x = tfft.nufft(kspace*dcw[0:(0+cpx_size[time_axis])], traj[0:(0+cpx_size[time_axis])], grid_shape=grid_size, transform_type='type_1', fft_direction='backward')
-
+    #grid size: (192,192)
+    #x = tfft.nufft(kspace*dcw[0:(0+cpx_size[time_axis])], traj[0:(0+cpx_size[time_axis])], grid_shape=grid_size, transform_type='type_1', fft_direction='backward')
+    #make bigger trajectory this time
+    traj = tfmr.radial_trajectory(192, views=13*40, phases=1, ordering='sorted', angle_range='full', readout_os=2.0)
+    traj = tf.reshape(traj, [-1 , 2]) #(199680,2)
+    traj = tf.reshape(traj, [40 , 4992, 2]) #(4992,40,2)
+    x = tfft.nufft(dcw_kspace, traj, grid_shape=(192,192), transform_type='type_1', fft_direction='backward')
+    print('x after undersamp',np.shape(x))
+    PlotUtils.plotVid(tf.cast(x,dtype=tf.float32),axis=0,vmax=1)
     """
     Crop
     """
@@ -387,7 +414,7 @@ print('image',np.shape(image))
 
 #interpolate data to 40 frames with specified accleration factor and start off at random initial temporal frame
 time_crop = 40
-image = interpolate_in_time(image, accel = 6, time_crop=time_crop)
+image = interpolate_in_time(image, accel = 3, time_crop=time_crop)
 
 naugment=2 #it seems that this determines the range that augment_counter goes up to. 
 stopmean=0
