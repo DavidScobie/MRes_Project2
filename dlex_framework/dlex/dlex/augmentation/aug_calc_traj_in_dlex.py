@@ -13,6 +13,7 @@ import tensorflow_nufft as tfft
 from scipy.interpolate import RegularGridInterpolator
 import pdb
 import h5py
+import tensorflow_mri as tfmr
 
 rng = tf.random.Generator.from_seed(123, alg='philox')
 rng2 = tf.random.Generator.from_seed(1234, alg='philox')  
@@ -268,16 +269,32 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     
     x=tf.complex(x[0,...],x[1,...])
     x=tf.transpose(x,perm=(2,0,1))
-    #Random Trajectory start point
-    trajstart=tf.cast((normseed[0]+1)/2*tf.cast(tf.shape(traj)[0]-cpx_size[time_axis],tf.float32),tf.int32)
-    
-    #NUFFT  First a forward transform and then a backward transform ONLY DOING THIS TO x
-    #print('traj with trajstart shape is',np.shape(traj[trajstart:(trajstart+cpx_size[time_axis]),...]))
-    kspace = tfft.nufft(x, traj[trajstart:(trajstart+cpx_size[time_axis]),...],transform_type='type_2', fft_direction='forward') 
-    #print('kspace shape',np.shape(kspace))
-    #print('dcw shape',np.shape(dcw))
-    x = tfft.nufft(kspace*dcw[trajstart:(trajstart+cpx_size[time_axis]),...], traj[trajstart:(trajstart+cpx_size[time_axis]),...], grid_shape=grid_size, transform_type='type_1', fft_direction='backward')
+      #Random Trajectory start point
+    print('traj',np.shape(traj),'cpx size',cpx_size,'normseed',normseed[0],'time_axis',time_axis)
 
+    traj = tfmr.radial_trajectory(192, views=13, phases=40, ordering='sorted', angle_range='full', readout_os=2.0)
+    print('new traj',np.shape(traj)) #(1, 520, 384, 2)
+    print('x',np.shape(x)) #(40,192,192)
+
+    traj = tf.reshape(traj, [40, -1 , 2]) #(40, 4992,2)  
+    print('new reshaped traj',np.shape(traj), 'max traj', np.max(traj), 'min traj', np.min(traj))
+    kspace = tfft.nufft(x, traj,transform_type='type_2', fft_direction='forward')
+    print('kspace',np.shape(kspace)) #(40,4992)
+    kspace = tf.reshape(kspace, [1 , -1]) #(1,199680)    
+
+    #need to find dcw
+    radial_weights = tfmr.radial_density(192, views=13, phases=40, ordering='sorted', angle_range='full', readout_os=2.0)
+    print('radial_weights',np.shape(radial_weights), 'max rad_wei', np.max(radial_weights), 'min rad_wei', np.min(radial_weights)) #(40,1,4992)
+    radial_weights = tf.transpose(radial_weights, perm=[1,0,2]) #(1,40,4992) CRUCIAL, IF OTHER WAY ROUND THE ORDER IS WRONG
+    radial_weights = tf.reshape(radial_weights, [1 , -1]) #(1,199680)
+
+    dcw_kspace = kspace / tf.cast(radial_weights,dtype=tf.complex64)
+    print('dcw_kspace',np.shape(dcw_kspace)) #(1,199680)  
+    dcw_kspace = tf.reshape(dcw_kspace, [40 , 4992])  
+
+    x = tfft.nufft(dcw_kspace, traj, grid_shape=(192,192), transform_type='type_1', fft_direction='backward')
+    print('x after undersamp',np.shape(x))
+    PlotUtils.plotVid(tf.cast(x,dtype=tf.float32),axis=0,vmax=1)
     """
     Crop
     """
