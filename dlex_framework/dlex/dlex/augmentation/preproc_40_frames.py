@@ -35,37 +35,9 @@ z1 = np.linspace(0,nFrames-1,num=int(N))
 print('z1',z1)
 print(one_data_dims)
 
-#THIS WORKS
-# my_interpolating_function = RegularGridInterpolator((x, y, z), one_data)
-
-# #interpolating over time
-# grid_dat = np.zeros((matrix,matrix,len(z1)))
-# for i in range (matrix):
-#     for j in range (matrix):
-#         for k in range (len(z1)):
-#             grid_dat[i,j,k] = my_interpolating_function([x1[i],y1[j],z1[k]])
-
-#THIS DOESNT WORK
-# print('z',z,'one_data[0,0,:]',one_data[0,0,:])
-# my_interpolating_function = RegularGridInterpolator((x,y,z), one_data)
-
-# #interpolating over time
-# grid_dat = [np.linspace(0,matrix-1,matrix), np.linspace(0,matrix-1,matrix), np.zeros((len(z1)))]
-# for k in range (len(z1)):
-#     grid_dat[:,:,k] = my_interpolating_function([x1,y1,z1[k]])
-meshx,meshy,meshz = np.meshgrid(x,y,z)
-print(type(meshx),meshx[0:5,0:4,0:3])
-# print(np.shape(meshx),meshx[0:5,0:4,0:3])
+#interpolation
 meshx1,meshy1,meshz1 = np.meshgrid(x1,y1,z1)
-# print(np.shape(meshx1),meshx1[0:5,0:4,0:3])
-#grid_dat = griddata(meshx,one_data,meshx1)
-#grid_dat = griddata((x,y,z),one_data,(x1,y1,z1))
-point = np.array([102.21, 103.12, 1.15])
-grid_dat = interpn((x,y,z), one_data, point)
-print('interp result',grid_dat)
-print(np.shape(np.array([meshx1,meshy1,meshz1]).T))
 grid_dat = interpn((x,y,z), one_data, np.array([meshx1,meshy1,meshz1]).T)
-#grid_dat = interpn((meshx,meshy,meshz), one_data, np.array([meshx1,meshy1,meshz1]).T)
 
 #transposing and normalising for plotting
 #grid_dat = np.transpose(grid_dat, (1,2,0))

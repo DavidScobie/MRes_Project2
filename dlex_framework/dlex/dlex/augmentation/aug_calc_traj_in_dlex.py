@@ -10,7 +10,7 @@ import tensorflow_addons as tfa
 import math
 import time
 import tensorflow_nufft as tfft
-from scipy.interpolate import RegularGridInterpolator
+from scipy.interpolate import interpn
 import pdb
 import h5py
 import tensorflow_mri as tfmr
@@ -189,7 +189,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
 
     normseed=tf.cast(seed/9223372036854775807,tf.float32) #random numbers in this range [-1;1]
     #print('normseed',normseed) #
-    traj,dcw=loadtrajectory(trajfile)
+    #traj,dcw=loadtrajectory(trajfile)
     #print('traj shape is',np.shape(traj))
     x= image_label
     y = image_label
@@ -210,9 +210,9 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     del mag,phs
     
     #Flip/Roll
-    cpx=tf.image.stateless_random_flip_left_right(cpx, seed=seed)
-    cpx=tf.image.stateless_random_flip_up_down(cpx, seed=seed)
-    cpx=tf.roll(cpx, shift=tf.cast(normseed[0]*image_size_float[time_axis],tf.int32) , axis=time_axis) #this may be the key line
+    # cpx=tf.image.stateless_random_flip_left_right(cpx, seed=seed)
+    # cpx=tf.image.stateless_random_flip_up_down(cpx, seed=seed)
+    # cpx=tf.roll(cpx, shift=tf.cast(normseed[0]*image_size_float[time_axis],tf.int32) , axis=time_axis) #this may be the key line
     #time_crop
     if time_crop is not None:
         #works for time_axis=2
@@ -246,11 +246,16 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
         displacement=tf.stack(displacement) #shape(20,2,1) values from 0 to -20.
         transform=tf.squeeze(displacement) #shape(20,2) values from 0 to -20
         #cpx size (20,192,192,2). this translates the cpx by the transform
-        cpx=tfa.image.translate(cpx,transform[:-1,:],'bilinear' ) #image:cpx. transaltion:transform. interpolation mode: bilinear
+        transform = transform[:,0]
+        Zeros = np.zeros((len(transform)))
+        transform = np.expand_dims(transform,1)
+        Zeros = np.expand_dims(Zeros,1)
+        transform = np.hstack((transform,Zeros))
+        cpx=tfa.image.translate(cpx,tf.cast(transform[:-1,:],tf.float32),'bilinear' ) #image:cpx. transaltion:transform. interpolation mode: bilinear
         
     #ROTATION
     maxrot=maxrot/180*tf.constant(math.pi) #Convert to radians.
-    cpx=tfa.image.rotate(cpx, angles=(normseed[0])*maxrot+maxrot,interpolation='bilinear')
+    #cpx=tfa.image.rotate(cpx, angles=(normseed[0])*maxrot+maxrot,interpolation='bilinear')
     #Crop to original size (before rotation)
     cpx=cpx[:,cpx_size[0]//2-image_size[0]//2:(cpx_size[0]//2-image_size[0]//2+image_size[0]),
             cpx_size[1]//2-image_size[1]//2:(cpx_size[1]//2-image_size[1]//2+image_size[0]),...]
@@ -270,7 +275,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     x=tf.complex(x[0,...],x[1,...])
     x=tf.transpose(x,perm=(2,0,1))
       #Random Trajectory start point
-    print('traj',np.shape(traj),'cpx size',cpx_size,'normseed',normseed[0],'time_axis',time_axis)
+    #print('traj',np.shape(traj),'cpx size',cpx_size,'normseed',normseed[0],'time_axis',time_axis)
 
     traj = tfmr.radial_trajectory(192, views=13, phases=40, ordering='tiny', angle_range='full', readout_os=2.0)
     print('new traj',np.shape(traj)) #(1, 520, 384, 2)
@@ -345,17 +350,11 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     spacing = (nFrames-1)/((nFrames/accel)-1)
     N = (nFrames)/spacing
     z1 = np.linspace(0,nFrames-1,num=int(N))
-    my_interpolating_function = RegularGridInterpolator((x, y, z), one_data)
 
-    #interpolating over time
-    grid_dat = np.zeros((matrix,matrix,len(z1)))
-    for i in range (matrix):
-        for j in range (matrix):
-            for k in range (len(z1)):
-                grid_dat[i,j,k] = my_interpolating_function([x1[i],y1[j],z1[k]])
+    #interpolation
+    meshx1,meshy1,meshz1 = np.meshgrid(x1,y1,z1)
+    grid_dat = interpn((x,y,z), one_data, np.array([meshx1,meshy1,meshz1]).T)
 
-    #transposing and normalising for plotting
-    grid_dat = np.transpose(grid_dat, (2,0,1))
     normed_grid_dat = grid_dat/np.amax(grid_dat)
 
     one_data = np.transpose(one_data, (2,0,1))
@@ -368,8 +367,8 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     rand_start_frame = np.random.randint(0,high = time_crop - 1) 
     time_crop_rand_start = rep_normed_grid_dat[rand_start_frame:rand_start_frame + time_crop, :, :]
 
-    PlotUtils.plotVid(normed_one_data,axis=0,vmax=1)
-    PlotUtils.plotVid(time_crop_rand_start,axis=0,vmax=1)
+    # PlotUtils.plotVid(normed_one_data,axis=0,vmax=1)
+    # PlotUtils.plotVid(time_crop_rand_start,axis=0,vmax=1)
     return time_crop_rand_start
 
 #Quick Test
