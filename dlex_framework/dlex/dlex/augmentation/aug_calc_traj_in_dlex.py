@@ -272,7 +272,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
       #Random Trajectory start point
     print('traj',np.shape(traj),'cpx size',cpx_size,'normseed',normseed[0],'time_axis',time_axis)
 
-    traj = tfmr.radial_trajectory(192, views=13, phases=40, ordering='sorted', angle_range='full', readout_os=2.0)
+    traj = tfmr.radial_trajectory(192, views=13, phases=40, ordering='tiny', angle_range='full', readout_os=2.0)
     print('new traj',np.shape(traj)) #(1, 520, 384, 2)
     print('x',np.shape(x)) #(40,192,192)
 
@@ -283,7 +283,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     kspace = tf.reshape(kspace, [1 , -1]) #(1,199680)    
 
     #need to find dcw
-    radial_weights = tfmr.radial_density(192, views=13, phases=40, ordering='sorted', angle_range='full', readout_os=2.0)
+    radial_weights = tfmr.radial_density(192, views=13, phases=40, ordering='tiny', angle_range='full', readout_os=2.0)
     print('radial_weights',np.shape(radial_weights), 'max rad_wei', np.max(radial_weights), 'min rad_wei', np.min(radial_weights)) #(40,1,4992)
     radial_weights = tf.transpose(radial_weights, perm=[1,0,2]) #(1,40,4992) CRUCIAL, IF OTHER WAY ROUND THE ORDER IS WRONG
     radial_weights = tf.reshape(radial_weights, [1 , -1]) #(1,199680)
@@ -294,7 +294,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
 
     x = tfft.nufft(dcw_kspace, traj, grid_shape=(192,192), transform_type='type_1', fft_direction='backward')
     print('x after undersamp',np.shape(x))
-    PlotUtils.plotVid(tf.cast(x,dtype=tf.float32),axis=0,vmax=1)
+    
     """
     Crop
     """
@@ -331,7 +331,7 @@ def load_data(file=None):
     with h5py.File(file, 'r+') as f:
         print(f.keys())
         new_dat_final = f['new_dat_final']
-        one_data=f[new_dat_final[5, 0]][:]
+        one_data=f[new_dat_final[0, 0]][:]
     return one_data
 
 def interpolate_in_time(one_data, accel = 1, time_crop=None):
@@ -401,7 +401,7 @@ image = interpolate_in_time(image, accel = 3, time_crop=time_crop)
 
 naugment=2 #it seems that this determines the range that augment_counter goes up to. 
 stopmean=0
-for i in range(naugment): #6
+for i in range(naugment): 
     start=time.time()
     #mask2 and image are the same in this case (both are y) 
     x,y=wrapper_augment(image,min_motion=1,max_motion=5,time_crop=time_crop,regsnr=100,deterministic=1,det_counter=10,trajfile=trajfile)
