@@ -227,8 +227,8 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     cpx=tf.transpose(cpx,[3,1,2,0]) #what is cpx?
     global augment_counter
     #random motion amplitude inbetween specified limits
-    motion_ampli = tf.random.uniform([1],minval=min_motion_ampli,maxval=max_motion_ampli,dtype=tf.dtypes.float32,seed=None,name=None)
-    #print('motion_ampli',motion_ampli)
+    motion_ampli = tf.random.uniform([1],minval=min_motion_ampli,maxval=max_motion_ampli,dtype=tf.dtypes.float32,seed=None,name=None)/(time_crop/2)
+    print('motion_ampli',motion_ampli)
     print('augment_counter',augment_counter)
     if augment_counter%2==1: #if it is even
         
@@ -236,8 +236,9 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
         for idxdisp in range(time_crop): #40
             print('idxdisp',idxdisp)
             if idxdisp%40==0:               
-                transform=tf.random.stateless_uniform((1,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli) #shift in 1 dimension
-                print('transform',transform)
+                #transform=tf.random.stateless_uniform((1,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli) #shift in 1 dimension
+                transform = motion_ampli
+                print('transform at first',transform)
             sin_point = 20*float(transform)*np.sin((idxdisp/time_crop)*2*np.pi)
             #this gives you a random number between the min and max amplitudes
             if idxdisp==0:
@@ -247,6 +248,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
         transform=tf.squeeze(displacement) #shape(20,2) values from 0 to -20
         #cpx size (20,192,192,2). this translates the cpx by the transform
         transform = transform[:,0]
+        print('transform',transform,'sum first 20',np.sum(transform[0:20]),np.sum(transform[21:40]))
         Zeros = np.zeros((len(transform)))
         transform = np.expand_dims(transform,1)
         Zeros = np.expand_dims(Zeros,1)

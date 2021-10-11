@@ -40,7 +40,6 @@ meshx1,meshy1,meshz1 = np.meshgrid(x1,y1,z1)
 grid_dat = interpn((x,y,z), one_data, np.array([meshx1,meshy1,meshz1]).T)
 
 #transposing and normalising for plotting
-#grid_dat = np.transpose(grid_dat, (1,2,0))
 print('grid_dat',np.shape(grid_dat),'max grid_dat',np.amax(grid_dat))
 normed_grid_dat = grid_dat/np.amax(grid_dat)
 
