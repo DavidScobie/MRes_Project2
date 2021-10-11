@@ -39,7 +39,7 @@ def loadtrajectory(trajfile):
 def wrapper_augment(imagey,
                     gpu=1,maxrot=45.0,time_axis=2,time_crop=None,min_motion=0, max_motion=0,
                     central_crop=128, grid_size=[192,192],regsnr=8,deterministic=0,det_counter=10,
-                    trajfile='/home/oj20/UCLjob/Project2/resources/traj_SpiralPerturbedOJ_section1.h5',
+                    resp_freq=1
                     ):
 
   seed = rng.make_seeds(2)[0]
@@ -51,23 +51,23 @@ def wrapper_augment(imagey,
   if gpu==1:
       with tf.device('/gpu:0'):
           if max_motion>0:
-              x, y = training_augmentation_flow_withmotion(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile,min_motion_ampli=min_motion,max_motion_ampli=max_motion)
+              x, y = training_augmentation_flow_withmotion(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,min_motion_ampli=min_motion,max_motion_ampli=max_motion,resp_freq=resp_freq)
           else:
-              x, y = training_augmentation_flow(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile)
+              x, y = training_augmentation_flow(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr)
   else:
       if max_motion>0:
-              x, y = training_augmentation_flow_withmotion(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile,min_motion_ampli=min_motion,max_motion_ampli=max_motion)
+              x, y = training_augmentation_flow_withmotion(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,min_motion_ampli=min_motion,max_motion_ampli=max_motion,resp_freq=resp_freq)
       else:
-              x, y = training_augmentation_flow(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,trajfile=trajfile)
+              x, y = training_augmentation_flow(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr)
 
   return x, y
 
 #augmentations applied to x and y, then x is undersampled at the end
-def training_augmentation_flow(image_label,seed,maxrot=45.0,time_axis=2,time_crop=None,central_crop=128,grid_size=[192,192],regsnr=8,trajfile='/home/oj20/UCLjob/Project2/resources/traj_SpiralPerturbedOJ_section1.h5'):
+def training_augmentation_flow(image_label,seed,maxrot=45.0,time_axis=2,time_crop=None,central_crop=128,grid_size=[192,192],regsnr=8):
 
     maxrot=maxrot/180*tf.constant(math.pi) #Convert to radians
     normseed=tf.cast(seed/9223372036854775807,tf.float32) #[-1;1]
-    traj,dcw=loadtrajectory(trajfile)
+    # traj,dcw=loadtrajectory(trajfile)
     y,x= image_label
     
     y=tf.transpose(y,perm=(0,1,2))
@@ -185,7 +185,7 @@ def awgn(data, regsnr,seed):
 
 
 #image_label is (image_y, image_x) which are both y in this case
-def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis=2,time_crop=None,central_crop=128,grid_size=[192,192],regsnr=8,min_motion_ampli=0,max_motion_ampli=0,trajfile='/home/oj20/UCLjob/Project2/resources/traj_SpiralPerturbedOJ_section1.h5'):
+def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis=2,time_crop=None,central_crop=128,grid_size=[192,192],regsnr=8,min_motion_ampli=0,max_motion_ampli=0,resp_freq=1):
 
     normseed=tf.cast(seed/9223372036854775807,tf.float32) #random numbers in this range [-1;1]
     #print('normseed',normseed) #
@@ -239,7 +239,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
                 #transform=tf.random.stateless_uniform((1,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli) #shift in 1 dimension
                 transform = motion_ampli
                 print('transform at first',transform)
-            sin_point = 20*float(transform)*np.sin((idxdisp/time_crop)*2*np.pi)
+            sin_point = 20*float(transform)*np.sin((idxdisp/(time_crop/resp_freq))*2*np.pi)
             #this gives you a random number between the min and max amplitudes
             if idxdisp==0:
                 displacement.append(tf.cast([[0],[0]],tf.float32)) #this is to get the initial zeros at the start
@@ -382,7 +382,7 @@ sys.path.insert(0, '/sf_ML_work/read_DICOMS/')
 
 import PlotUtils
 import time
-trajfile='/media/sf_ML_work/trajectory_files/traj_tGAOJ_13.h5'
+#trajfile='/media/sf_ML_work/trajectory_files/traj_tGAOJ_13.h5'
 fdata='/media/sf_ML_work/mapped_docker_files/ml/data/yonly/a_few_SAX_40_rest_and_trans_aug_y_only/cache/'
 
 dataplot='train_00001'
@@ -405,7 +405,7 @@ stopmean=0
 for i in range(naugment): 
     start=time.time()
     #mask2 and image are the same in this case (both are y) 
-    x,y=wrapper_augment(image,min_motion=1,max_motion=5,time_crop=time_crop,regsnr=100,deterministic=1,det_counter=10,trajfile=trajfile)
+    x,y=wrapper_augment(image,gpu=0,min_motion=1,max_motion=5,time_crop=time_crop,regsnr=100,deterministic=1,det_counter=10,resp_freq=3)
     stop=time.time()-start
     stopmean=stopmean+stop
     #pdb.run('x,y=wrapper_augment(image,mask2)')
