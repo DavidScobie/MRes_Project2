@@ -39,7 +39,7 @@ def loadtrajectory(trajfile):
 def wrapper_augment(imagey,
                     gpu=1,maxrot=45.0,time_axis=2,time_crop=None,min_motion=0, max_motion=0,
                     central_crop=128, grid_size=[192,192],regsnr=8,deterministic=0,det_counter=10,
-                    resp_freq=1
+                    resp_freq=1, accel=3
                     ):
 
   seed = rng.make_seeds(2)[0]
@@ -47,6 +47,8 @@ def wrapper_augment(imagey,
       global deterministic_counter
       seed=precomputedseeds[deterministic_counter*2:deterministic_counter*2+2]
       deterministic_counter=(deterministic_counter+1)%det_counter
+
+  imagey = interpolate_in_time(imagey, accel = 3, time_crop=time_crop)
       
   if gpu==1:
       with tf.device('/gpu:0'):
@@ -230,30 +232,30 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     motion_ampli = tf.random.uniform([1],minval=min_motion_ampli,maxval=max_motion_ampli,dtype=tf.dtypes.float32,seed=None,name=None)/(time_crop/2)
     print('motion_ampli',motion_ampli)
     print('augment_counter',augment_counter)
-    if augment_counter%2==1: #if it is even
-        
-        displacement=[]
-        for idxdisp in range(time_crop): #40
-            print('idxdisp',idxdisp)
-            if idxdisp%40==0:               
-                #transform=tf.random.stateless_uniform((1,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli) #shift in 1 dimension
-                transform = motion_ampli
-                print('transform at first',transform)
-            sin_point = 20*float(transform)*np.sin((idxdisp/(time_crop/resp_freq))*2*np.pi)
-            #this gives you a random number between the min and max amplitudes
-            if idxdisp==0:
-                displacement.append(tf.cast([[0],[0]],tf.float32)) #this is to get the initial zeros at the start
-            displacement.append(tf.cast([[sin_point],[sin_point]],tf.float32))
-        displacement=tf.stack(displacement) #shape(20,2,1) values from 0 to -20.
-        transform=tf.squeeze(displacement) #shape(20,2) values from 0 to -20
-        #cpx size (20,192,192,2). this translates the cpx by the transform
-        transform = transform[:,0]
-        print('transform',transform,'sum first 20',np.sum(transform[0:20]),np.sum(transform[21:40]))
-        Zeros = np.zeros((len(transform)))
-        transform = np.expand_dims(transform,1)
-        Zeros = np.expand_dims(Zeros,1)
-        transform = np.hstack((transform,Zeros))
-        cpx=tfa.image.translate(cpx,tf.cast(transform[:-1,:],tf.float32),'bilinear' ) #image:cpx. transaltion:transform. interpolation mode: bilinear
+    # if augment_counter%2==1: #if it is even
+    
+    displacement=[]
+    for idxdisp in range(time_crop): #40
+        print('idxdisp',idxdisp)
+        if idxdisp%40==0:               
+            #transform=tf.random.stateless_uniform((1,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli) #shift in 1 dimension
+            transform = motion_ampli
+            print('transform at first',transform)
+        sin_point = 20*float(transform)*np.sin((idxdisp/(time_crop/resp_freq))*2*np.pi)
+        #this gives you a random number between the min and max amplitudes
+        if idxdisp==0:
+            displacement.append(tf.cast([[0],[0]],tf.float32)) #this is to get the initial zeros at the start
+        displacement.append(tf.cast([[sin_point],[sin_point]],tf.float32))
+    displacement=tf.stack(displacement) #shape(20,2,1) values from 0 to -20.
+    transform=tf.squeeze(displacement) #shape(20,2) values from 0 to -20
+    #cpx size (20,192,192,2). this translates the cpx by the transform
+    transform = transform[:,0]
+    print('transform',transform,'sum first 20',np.sum(transform[0:20]),np.sum(transform[21:40]))
+    Zeros = np.zeros((len(transform)))
+    transform = np.expand_dims(transform,1)
+    Zeros = np.expand_dims(Zeros,1)
+    transform = np.hstack((transform,Zeros))
+    cpx=tfa.image.translate(cpx,tf.cast(transform[:-1,:],tf.float32),'bilinear' ) #image:cpx. transaltion:transform. interpolation mode: bilinear
         
     #ROTATION
     maxrot=maxrot/180*tf.constant(math.pi) #Convert to radians.
@@ -398,24 +400,17 @@ print('image',np.shape(image))
 
 #interpolate data to 40 frames with specified accleration factor and start off at random initial temporal frame
 time_crop = 40
-image = interpolate_in_time(image, accel = 3, time_crop=time_crop)
+#image = interpolate_in_time(image, accel = 3, time_crop=time_crop)
 
-naugment=2 #it seems that this determines the range that augment_counter goes up to. 
+naugment=1 #it seems that this determines the range that augment_counter goes up to. 
 stopmean=0
-for i in range(naugment): 
-    start=time.time()
-    #mask2 and image are the same in this case (both are y) 
-    x,y=wrapper_augment(image,gpu=0,min_motion=1,max_motion=5,time_crop=time_crop,regsnr=100,deterministic=1,det_counter=10,resp_freq=3)
-    stop=time.time()-start
-    stopmean=stopmean+stop
-    #pdb.run('x,y=wrapper_augment(image,mask2)')
+#for i in range(naugment): 
+start=time.time()
+#mask2 and image are the same in this case (both are y) 
+x,y=wrapper_augment(image,accel=3,gpu=0,min_motion=5,max_motion=5,time_crop=time_crop,regsnr=100,deterministic=1,det_counter=10,resp_freq=3)
+stop=time.time()-start
+stopmean=stopmean+stop
 
-    temp=np.concatenate((tf.abs(x[-1,...]), tf.abs(y[-1,...])),axis=1)
-    if i==0:
-        ys=temp
-    else:
-        
-        ys=np.concatenate((ys,temp),axis=0)
     
 stopmean=stopmean/naugment
 print('Mean time:',stopmean,'\n Last time:',stop)
