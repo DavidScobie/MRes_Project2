@@ -41,7 +41,7 @@ def loadtrajectory(trajfile):
 def wrapper_augment(imagex,imagey,
                     gpu=1,maxrot=45.0,time_axis=2,time_crop=None,min_motion=0, max_motion=0,
                     central_crop=128, grid_size=[192,192],regsnr=8,deterministic=0,det_counter=10,
-                    resp_freq=1, accel=3
+                    resp_freq=1, accel=1
                     ):
 
   seed = rng.make_seeds(2)[0]
@@ -50,7 +50,7 @@ def wrapper_augment(imagex,imagey,
       seed=precomputedseeds[deterministic_counter*2:deterministic_counter*2+2]
       deterministic_counter=(deterministic_counter+1)%det_counter
   
-  imagey = interpolate_in_time(imagey, accel = 3, time_crop=time_crop)
+  imagey = interpolate_in_time(imagey, accel = accel, time_crop=time_crop)
       
   if gpu==1:
       with tf.device('/gpu:0'):
@@ -186,7 +186,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     dcw_kspace = tf.reshape(dcw_kspace, [40 , 4992])  
 
     x = tfft.nufft(dcw_kspace, traj, grid_shape=(192,192), transform_type='type_1', fft_direction='backward')
-    print('x after undersamp',np.shape(x))
+    #print('x after undersamp',np.shape(x))
     
     """
     Crop
@@ -236,8 +236,8 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     one_data_dims = tf.shape(one_data)
     print('one data dims',one_data_dims,'one data dims 2',one_data_dims[2])
 
-    one_data_dims_nump = np.shape(one_data)
-    print('one data dims numpy',one_data_dims_nump)
+    #one_data_dims_nump = np.shape(one_data)
+    #print('one data dims numpy',one_data_dims_nump)
 
     #loop for the first pass where no data is read in. A made up tensor of zeros is made instead
     # if one_data_dims_nump[2] == None:
@@ -256,11 +256,11 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     z = tf.linspace(0,nFrames_int32-1,nFrames_int32)
     nFrames_float64 = tf.cast(nFrames_int32,tf.float64)
     spacing = (nFrames_float64-1)/((nFrames_float64/accel)-1)
-    N = (nFrames_int32)/tf.cast(spacing,tf.int32)
-    z1 = tf.linspace(0,nFrames_int32-1,num=int(N))
+    N = tf.cast(((nFrames_float64)/spacing),tf.int32)
+    z1 = tf.linspace(0,nFrames_int32-1,num=N)
 
     #interpolation
-    meshx1,meshy1,meshz1 = np.meshgrid(x1,y1,z1)
+    #meshx1,meshy1,meshz1 = np.meshgrid(x1,y1,z1)
 
     #converting to a numpy array for the interpolation to work
     #one_data = one_data.eval(session=tf.compat.v1.Session())
@@ -269,7 +269,7 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     #tensorflow interpolation
     x_ref_min = tf.cast(0,tf.float64)
     x_ref_max = tf.cast(nFrames_int32-1,tf.float64)
-    z1 = tf.linspace(0,nFrames_int32-1,num=int(N))
+    z1 = tf.linspace(0,nFrames_int32-1,num=N)
 
     grid_dat = tfp.math.interp_regular_1d_grid(tf.cast(z1,tf.float64), x_ref_min, x_ref_max, one_data, axis=-1)
     print('grid dat',grid_dat)
@@ -296,10 +296,10 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
 
     print('time_crop_rand_start',tf.shape(time_crop_rand_start))
 
-    PlotUtils.plotVid(normed_one_data,axis=0,vmax=1)
-    PlotUtils.plotVid(time_crop_rand_start,axis=0,vmax=1)
+    # PlotUtils.plotVid(normed_one_data,axis=0,vmax=1)
+    # PlotUtils.plotVid(time_crop_rand_start,axis=0,vmax=1)
     return time_crop_rand_start
-
+"""
 #Quick Test
 import h5py
 import numpy as np
@@ -332,7 +332,7 @@ stopmean=0
 #for i in range(naugment): 
 start=time.time()
 #mask2 and image are the same in this case (both are y) 
-x,y=wrapper_augment(image,image,accel=3,gpu=0,min_motion=5,max_motion=5,time_crop=time_crop,regsnr=100,deterministic=1,det_counter=10,resp_freq=3)
+x,y=wrapper_augment(image,image,accel=1,gpu=0,min_motion=5,max_motion=5,time_crop=time_crop,regsnr=100,deterministic=1,det_counter=10,resp_freq=3)
 stop=time.time()-start
 stopmean=stopmean+stop
 
@@ -343,8 +343,8 @@ print('Mean time:',stopmean,'\n Last time:',stop)
 print('x',tf.shape(x),'y',tf.shape(y))
 imgx=np.concatenate((x,y),axis=1)
 print('imgx',np.shape(imgx),'max imgx',np.amax(imgx))
-PlotUtils.plotVid(imgx,axis=0,vmax=1)
-
+#PlotUtils.plotVid(imgx,axis=0,vmax=1)
+"""
 
 
 
