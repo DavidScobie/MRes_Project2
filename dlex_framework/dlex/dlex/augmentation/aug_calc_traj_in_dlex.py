@@ -15,6 +15,7 @@ import pdb
 import h5py
 import tensorflow_mri as tfmr
 import numpy as np
+import tensorflow_probability as tfp
 
 rng = tf.random.Generator.from_seed(123, alg='philox')
 rng2 = tf.random.Generator.from_seed(1234, alg='philox')  
@@ -121,11 +122,14 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
             #transform=tf.random.stateless_uniform((1,1), seed+idxdisp, minval=-motion_ampli, maxval=motion_ampli) #shift in 1 dimension
             transform = motion_ampli
             print('transform at first',transform)
-        sin_point = 20*float(transform)*np.sin((idxdisp/(time_crop/resp_freq))*2*np.pi)
+        sin_point = 20*tf.cast(transform,tf.float32)*tf.math.sin((idxdisp/(time_crop/resp_freq))*2*tf.constant(math.pi))
+        #print('sin_point',tf.shape(sin_point),sin_point)
         #this gives you a random number between the min and max amplitudes
         if idxdisp==0:
-            displacement.append(tf.cast([[0],[0]],tf.float32)) #this is to get the initial zeros at the start
-        displacement.append(tf.cast([[sin_point],[sin_point]],tf.float32))
+            displacement.append(tf.cast([[[0]],[[0]]],tf.float32)) #HERE IT IS shape (2,1)
+
+        displacement.append(tf.cast([[sin_point],[sin_point]],tf.float32)) #IT FAILS HERE
+
     displacement=tf.stack(displacement) #shape(20,2,1) values from 0 to -20.
     transform=tf.squeeze(displacement) #shape(20,2) values from 0 to -20
     #cpx size (20,192,192,2). this translates the cpx by the transform
@@ -235,32 +239,40 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     one_data_dims_nump = np.shape(one_data)
     print('one data dims numpy',one_data_dims_nump)
 
-    if one_data_dims_nump[2] == None:
-        print('IN THE LOOP')
-        #y=tf.ensure_shape(y,(None,central_crop,central_crop,1))
-        one_data = tf.zeros([192, 192, 20], tf.int32)
-        print('one_data',one_data)
-        #one_data_dims = tf.shape(one_data)
-        one_data_dims = one_data.get_shape()
-        print('after one data dims',one_data_dims)
+    #loop for the first pass where no data is read in. A made up tensor of zeros is made instead
+    # if one_data_dims_nump[2] == None:
+    #     print('IN THE LOOP')
+    #     #y=tf.ensure_shape(y,(None,central_crop,central_crop,1))
+    #     one_data = tf.zeros([192, 192, 20], tf.int32)
+    #     print('one_data',one_data)
+    #     #one_data_dims = tf.shape(one_data)
+    #     one_data_dims = one_data.get_shape()
+    #     print('after one data dims',one_data_dims)
 
     
-    nFrames = one_data_dims[2]#issue is that this is zero
-    matrix = one_data_dims[0]
-    x = y = x1 = y1 = np.linspace(0,matrix-1,matrix)
-    z = np.linspace(0,nFrames-1,nFrames)
-    spacing = (nFrames-1)/((nFrames/accel)-1)
-    N = (nFrames)/spacing
-    z1 = np.linspace(0,nFrames-1,num=int(N))
+    nFrames_int32 = tf.cast(one_data_dims[2],tf.int32)#issue is that this is zero
+    matrix = tf.cast(one_data_dims[0],tf.int32)
+    x = y = x1 = y1 = tf.linspace(0,matrix-1,matrix)
+    z = tf.linspace(0,nFrames_int32-1,nFrames_int32)
+    nFrames_float64 = tf.cast(nFrames_int32,tf.float64)
+    spacing = (nFrames_float64-1)/((nFrames_float64/accel)-1)
+    N = (nFrames_int32)/tf.cast(spacing,tf.int32)
+    z1 = tf.linspace(0,nFrames_int32-1,num=int(N))
 
     #interpolation
     meshx1,meshy1,meshz1 = np.meshgrid(x1,y1,z1)
-    #one_data = tf.make_tensor_proto(one_data)
-    #one_data = tf.make_ndarray(one_data)
-    one_data = one_data.eval(session=tf.compat.v1.Session())
-    #one_data = tf.make_ndarray(one_data)
-    grid_dat = interpn((x,y,z), one_data, np.array([meshx1,meshy1,meshz1]).T)
 
+    #converting to a numpy array for the interpolation to work
+    #one_data = one_data.eval(session=tf.compat.v1.Session())
+    #grid_dat = interpn((x,y,z), one_data, np.array([meshx1,meshy1,meshz1]).T)
+
+    #tensorflow interpolation
+    x_ref_min = tf.cast(0,tf.float64)
+    x_ref_max = tf.cast(nFrames_int32-1,tf.float64)
+    z1 = tf.linspace(0,nFrames_int32-1,num=int(N))
+
+    grid_dat = tfp.math.interp_regular_1d_grid(tf.cast(z1,tf.float64), x_ref_min, x_ref_max, one_data, axis=-1)
+    print('grid dat',grid_dat)
     normed_grid_dat = grid_dat/np.amax(grid_dat)
 
     one_data = np.transpose(one_data, (2,0,1))
@@ -276,7 +288,7 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     # PlotUtils.plotVid(normed_one_data,axis=0,vmax=1)
     # PlotUtils.plotVid(time_crop_rand_start,axis=0,vmax=1)
     return time_crop_rand_start
-"""
+
 #Quick Test
 import h5py
 import numpy as np
@@ -309,7 +321,7 @@ stopmean=0
 #for i in range(naugment): 
 start=time.time()
 #mask2 and image are the same in this case (both are y) 
-x,y=wrapper_augment(image,accel=3,gpu=0,min_motion=5,max_motion=5,time_crop=time_crop,regsnr=100,deterministic=1,det_counter=10,resp_freq=3)
+x,y=wrapper_augment(image,image,accel=3,gpu=0,min_motion=5,max_motion=5,time_crop=time_crop,regsnr=100,deterministic=1,det_counter=10,resp_freq=3)
 stop=time.time()-start
 stopmean=stopmean+stop
 
@@ -319,8 +331,8 @@ print('Mean time:',stopmean,'\n Last time:',stop)
 # PlotUtils.plotXd(ys,vmax=1,vmin=0)
 imgx=np.concatenate((x,y),axis=1)
 print('imgx',np.shape(imgx),'max imgx',np.amax(imgx))
-#PlotUtils.plotVid(imgx,axis=0,vmax=1)
-"""
+PlotUtils.plotVid(imgx,axis=0,vmax=1)
+
 
 
 
