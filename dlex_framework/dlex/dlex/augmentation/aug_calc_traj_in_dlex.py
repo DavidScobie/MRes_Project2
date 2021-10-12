@@ -134,11 +134,11 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     transform=tf.squeeze(displacement) #shape(20,2) values from 0 to -20
     #cpx size (20,192,192,2). this translates the cpx by the transform
     transform = transform[:,0]
-    print('transform',transform,'sum first 20',np.sum(transform[0:20]),np.sum(transform[21:40]))
-    Zeros = np.zeros((len(transform)))
-    transform = np.expand_dims(transform,1)
-    Zeros = np.expand_dims(Zeros,1)
-    transform = np.hstack((transform,Zeros))
+    print('transform',transform,'sum first 20',tf.reduce_sum(transform[0:20]),tf.reduce_sum(transform[21:40]))
+    Zeros = tf.zeros((len(transform)))
+    transform = tf.expand_dims(transform,1)
+    Zeros = tf.expand_dims(Zeros,1)
+    transform = tf.experimental.numpy.hstack((transform,Zeros))   
     cpx=tfa.image.translate(cpx,tf.cast(transform[:-1,:],tf.float32),'bilinear' ) #image:cpx. transaltion:transform. interpolation mode: bilinear
         
     #ROTATION
@@ -166,23 +166,23 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     #print('traj',np.shape(traj),'cpx size',cpx_size,'normseed',normseed[0],'time_axis',time_axis)
 
     traj = tfmr.radial_trajectory(192, views=13, phases=40, ordering='tiny', angle_range='full', readout_os=2.0)
-    print('new traj',np.shape(traj)) #(1, 520, 384, 2)
-    print('x',np.shape(x)) #(40,192,192)
+    print('new traj',tf.shape(traj)) #(1, 520, 384, 2)
+    print('x',tf.shape(x)) #(40,192,192)
 
     traj = tf.reshape(traj, [40, -1 , 2]) #(40, 4992,2)  
-    print('new reshaped traj',np.shape(traj), 'max traj', np.max(traj), 'min traj', np.min(traj))
+    #print('new reshaped traj',tf.shape(traj), 'max traj', tf.max(traj), 'min traj', tf.min(traj))
     kspace = tfft.nufft(x, traj,transform_type='type_2', fft_direction='forward')
-    print('kspace',np.shape(kspace)) #(40,4992)
+    #print('kspace',tfp.shape(kspace)) #(40,4992)
     kspace = tf.reshape(kspace, [1 , -1]) #(1,199680)    
 
     #need to find dcw
     radial_weights = tfmr.radial_density(192, views=13, phases=40, ordering='tiny', angle_range='full', readout_os=2.0)
-    print('radial_weights',np.shape(radial_weights), 'max rad_wei', np.max(radial_weights), 'min rad_wei', np.min(radial_weights)) #(40,1,4992)
+    #print('radial_weights',tf.shape(radial_weights), 'max rad_wei', tf.max(radial_weights), 'min rad_wei', np.min(radial_weights)) #(40,1,4992)
     radial_weights = tf.transpose(radial_weights, perm=[1,0,2]) #(1,40,4992) CRUCIAL, IF OTHER WAY ROUND THE ORDER IS WRONG
     radial_weights = tf.reshape(radial_weights, [1 , -1]) #(1,199680)
 
     dcw_kspace = kspace / tf.cast(radial_weights,dtype=tf.complex64)
-    print('dcw_kspace',np.shape(dcw_kspace)) #(1,199680)  
+    print('dcw_kspace',tf.shape(dcw_kspace)) #(1,199680)  
     dcw_kspace = tf.reshape(dcw_kspace, [40 , 4992])  
 
     x = tfft.nufft(dcw_kspace, traj, grid_shape=(192,192), transform_type='type_1', fft_direction='backward')
@@ -215,8 +215,8 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     y=tf.math.abs(cpx)
     x=tf.math.abs(x)
     
-    x=tf.ensure_shape(x,(None,central_crop,central_crop,1))
-    y=tf.ensure_shape(y,(None,central_crop,central_crop,1))
+    # x=tf.ensure_shape(x,(None,central_crop,central_crop,1))
+    # y=tf.ensure_shape(y,(None,central_crop,central_crop,1))
     
     return x,y
 
@@ -273,20 +273,31 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
 
     grid_dat = tfp.math.interp_regular_1d_grid(tf.cast(z1,tf.float64), x_ref_min, x_ref_max, one_data, axis=-1)
     print('grid dat',grid_dat)
-    normed_grid_dat = grid_dat/np.amax(grid_dat)
+    normed_grid_dat = grid_dat/tf.math.reduce_max(grid_dat)   
 
-    one_data = np.transpose(one_data, (2,0,1))
-    normed_one_data = one_data/np.amax(one_data)
+    one_data = tf.transpose(one_data, perm=[2,0,1])
+    normed_one_data = one_data/tf.math.reduce_max(one_data)
+    print('normed_one_data',tf.shape(normed_one_data))
+
 
     #repeating the data out to 40 frames and take random starting phase
-    num_repetitions = np.ceil((3*time_crop)/len(z1)) #always 120 frames before cutting
-    rep_normed_grid_dat  = np.tile(normed_grid_dat,(int(num_repetitions),1,1)) # in there for random starting frame
+    num_repetitions = tf.math.ceil((3*time_crop)/len(z1)) #always 120 frames before cutting
 
-    rand_start_frame = np.random.randint(0,high = time_crop - 1) 
+    normed_grid_dat = tf.transpose(normed_grid_dat, perm=[2,0,1])
+
+    rep_normed_grid_dat  = tf.tile(normed_grid_dat,(int(num_repetitions),1,1)) # in there for random starting frame
+
+    normed_grid_dat = tf.transpose(normed_grid_dat, perm=[1,2,0])
+
+    print('rep_normed_grid_dat',tf.shape(rep_normed_grid_dat))
+
+    rand_start_frame = tf.experimental.numpy.random.randint(0,high = time_crop - 1) 
     time_crop_rand_start = rep_normed_grid_dat[rand_start_frame:rand_start_frame + time_crop, :, :]
 
-    # PlotUtils.plotVid(normed_one_data,axis=0,vmax=1)
-    # PlotUtils.plotVid(time_crop_rand_start,axis=0,vmax=1)
+    print('time_crop_rand_start',tf.shape(time_crop_rand_start))
+
+    PlotUtils.plotVid(normed_one_data,axis=0,vmax=1)
+    PlotUtils.plotVid(time_crop_rand_start,axis=0,vmax=1)
     return time_crop_rand_start
 
 #Quick Test
@@ -329,6 +340,7 @@ stopmean=stopmean+stop
 stopmean=stopmean/naugment
 print('Mean time:',stopmean,'\n Last time:',stop)
 # PlotUtils.plotXd(ys,vmax=1,vmin=0)
+print('x',tf.shape(x),'y',tf.shape(y))
 imgx=np.concatenate((x,y),axis=1)
 print('imgx',np.shape(imgx),'max imgx',np.amax(imgx))
 PlotUtils.plotVid(imgx,axis=0,vmax=1)
