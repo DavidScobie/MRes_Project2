@@ -14,6 +14,7 @@ from scipy.interpolate import interpn
 import pdb
 import h5py
 import tensorflow_mri as tfmr
+import numpy as np
 
 rng = tf.random.Generator.from_seed(123, alg='philox')
 rng2 = tf.random.Generator.from_seed(1234, alg='philox')  
@@ -36,7 +37,7 @@ def loadtrajectory(trajfile):
 #loadtrajectory('/home/oj20/UCLjob/Project2/resources/traj_SpiralPerturbedOJ_section1.h5')
 
 
-def wrapper_augment(imagey,
+def wrapper_augment(imagex,imagey,
                     gpu=1,maxrot=45.0,time_axis=2,time_crop=None,min_motion=0, max_motion=0,
                     central_crop=128, grid_size=[192,192],regsnr=8,deterministic=0,det_counter=10,
                     resp_freq=1, accel=3
@@ -47,143 +48,22 @@ def wrapper_augment(imagey,
       global deterministic_counter
       seed=precomputedseeds[deterministic_counter*2:deterministic_counter*2+2]
       deterministic_counter=(deterministic_counter+1)%det_counter
-
+  
   imagey = interpolate_in_time(imagey, accel = 3, time_crop=time_crop)
       
   if gpu==1:
       with tf.device('/gpu:0'):
           if max_motion>0:
               x, y = training_augmentation_flow_withmotion(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,min_motion_ampli=min_motion,max_motion_ampli=max_motion,resp_freq=resp_freq)
-          else:
-              x, y = training_augmentation_flow(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr)
+          #else:
+              #x, y = training_augmentation_flow(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr)
   else:
       if max_motion>0:
               x, y = training_augmentation_flow_withmotion(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,min_motion_ampli=min_motion,max_motion_ampli=max_motion,resp_freq=resp_freq)
-      else:
-              x, y = training_augmentation_flow(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr)
+      #else:
+              #x, y = training_augmentation_flow(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr)
 
   return x, y
-
-#augmentations applied to x and y, then x is undersampled at the end
-def training_augmentation_flow(image_label,seed,maxrot=45.0,time_axis=2,time_crop=None,central_crop=128,grid_size=[192,192],regsnr=8):
-
-    maxrot=maxrot/180*tf.constant(math.pi) #Convert to radians
-    normseed=tf.cast(seed/9223372036854775807,tf.float32) #[-1;1]
-    # traj,dcw=loadtrajectory(trajfile)
-    y,x= image_label
-    
-    y=tf.transpose(y,perm=(0,1,2))
-    y=tf.cast(y,tf.complex64)
-    
-    image_size=tf.shape(y)
-    image_size_float=tf.cast(tf.shape(y),tf.float32)
-    mag=tf.math.abs(y)#/tf.reduce_max(tf.math.abs(y),axis=(0,1),keepdims=True) #for frameperframe norm
-    phs=tf.math.angle(y)+normseed[0]*tf.constant(0.5*math.pi)
-    
-    #Contrast Change on magnitude
-    mag=tf.image.stateless_random_contrast(mag,lower=0.5,upper=1.5 , seed=seed)
-    
-    cpx=tf.cast(mag,tf.complex64)*tf.exp(1j*tf.cast(phs,tf.complex64))
-    del mag,phs
-    
-    #Flip/Roll
-    cpx=tf.image.stateless_random_flip_left_right(cpx, seed=seed)
-    cpx=tf.image.stateless_random_flip_up_down(cpx, seed=seed)
-    cpx=tf.roll(cpx, shift=tf.cast(normseed[0]*image_size_float[time_axis],tf.int32) , axis=time_axis)
-    #time_crop
-    if time_crop is not None:
-        #works for time_axis=2
-        cpx=cpx[:,:,:time_crop,...]
-    cpx_size=tf.shape(cpx)
-    #ROTATION
-    cpx=tf.expand_dims(cpx, axis=0)
-    cpx=tf.concat((tf.math.real(cpx),tf.math.imag(cpx)),axis=0)
-    cpx=tfa.image.rotate(cpx, angles=(normseed[0])*maxrot+maxrot,interpolation='bilinear')
-    #Crop to original size (before rotation)
-    cpx=cpx[:,cpx_size[0]//2-image_size[0]//2:(cpx_size[0]//2-image_size[0]//2+image_size[0]),
-            cpx_size[1]//2-image_size[1]//2:(cpx_size[1]//2-image_size[1]//2+image_size[0]),...]
-    
-    """
-    X is overwritten
-    """
-    
-    #Add White gaussian noise to x branch only
-    # x=awgn(cpx,regsnr,seed) #previously uncommented (if you want noise)
-    #cpx=awgn(cpx,regsnr)
-    x = cpx  # if you dont want any noise
-    
-    cpx=tf.complex(cpx[0,...],cpx[1,...])
-    cpx=tf.transpose(cpx,perm=(2,0,1))
-    
-    x=tf.complex(x[0,...],x[1,...])
-    x=tf.transpose(x,perm=(2,0,1))
-    
-    #Random Trajectory start point
-    trajstart=tf.cast((normseed[0]+1)/2*tf.cast(tf.shape(traj)[0]-cpx_size[time_axis],tf.float32),tf.int32)
-    
-    #NUFFT
-    kspace = tfft.nufft(x, traj[trajstart:(trajstart+cpx_size[time_axis]),...],transform_type='type_2', fft_direction='forward')
-    x = tfft.nufft(kspace*dcw[trajstart:(trajstart+cpx_size[time_axis]),...], traj[trajstart:(trajstart+cpx_size[time_axis]),...], grid_shape=grid_size, transform_type='type_1', fft_direction='backward')
-    
-
-    
-    """
-    Crop
-    """
-    cpx=cpx[:,cpx_size[0]//2-central_crop//2:(cpx_size[0]//2-central_crop//2+central_crop),
-            cpx_size[1]//2-central_crop//2:(cpx_size[1]//2-central_crop//2+central_crop)]
-    x=x[:,cpx_size[0]//2-central_crop//2:(cpx_size[0]//2-central_crop//2+central_crop),
-            cpx_size[1]//2-central_crop//2:(cpx_size[1]//2-central_crop//2+central_crop)]
-
-    
-    cpx=tf.expand_dims(cpx,axis=-1)
-    x=tf.expand_dims(x,axis=-1)
-    
-    cpx=cpx/tf.cast(tf.reduce_max(tf.abs(cpx)),dtype=cpx.dtype)
-    x=x/tf.cast(tf.reduce_max(tf.abs(x)),dtype=x.dtype)
-    
-    y=tf.math.abs(cpx)
-    x=tf.math.abs(x)
-    
-    x=tf.ensure_shape(x,(None,central_crop,central_crop,1))
-    y=tf.ensure_shape(y,(None,central_crop,central_crop,1))
-    # y=tf.concat((tf.math.real(cpx),tf.math.imag(cpx)),axis=-1)
-    # x=tf.concat((tf.math.real(x),tf.math.imag(x)),axis=-1)
-    
-    # x=tf.ensure_shape(x,(None,central_crop,central_crop,2))
-    # y=tf.ensure_shape(y,(None,central_crop,central_crop,2))
-    
-    return x,y
-
-def awgn(data, regsnr,seed): 
-    """
-    Add White Gaussian noise to reach target snr
-    """
-    sigpower = tf.reduce_mean(tf.abs(data) ** 2)
-    noisepower = sigpower / (10 ** (regsnr / 10))
-    noise = tf.random.stateless_normal(tf.shape(data), seed,0, tf.math.sqrt(noisepower))
-    #noise = tf.random.normal( tf.shape(data),0, tf.math.sqrt(noisepower))
-    data += noise
-    return data
-
-# @tf.function
-# def motion_aug(cpx,seed,displacement=None,interp='bilinear',motion_proba=0): 
-#     normseed=tf.cast(seed/9223372036854775807,tf.float32) #[-1;1]
-#     if (normseed[1]+1)/2<motion_proba:
-#         if displacement is None:
-#             displacement=[]
-#             for idxdisp in range(tf.shape(cpx)[0]):
-#                 print(seed[0])
-#                 transform=tf.random.normal( (2,1),0,1,seed=seed[0])
-#                 if idxdisp==0:
-#                     displacement.append(tf.cast([[0], [0]],tf.float32))
-#                 else:
-#                     displacement.append(transform+displacement[idxdisp-1])
-#             displacement=tf.stack(displacement)
-#             displacement=tf.squeeze(displacement)
-#         cpx=tfa.image.translate(cpx,displacement,interpolation=interp )
-    
-#     return cpx, displacement
 
 
 #image_label is (image_y, image_x) which are both y in this case
@@ -271,8 +151,8 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     """
     
     #Add White gaussian noise to x branch only
-    x=awgn(cpx,regsnr,seed)
-    
+    #x=awgn(cpx,regsnr,seed)
+    x=cpx
     cpx=tf.complex(cpx[0,...],cpx[1,...])
     cpx=tf.transpose(cpx,perm=(2,0,1))
     
@@ -345,9 +225,27 @@ def load_data(file=None):
 
 def interpolate_in_time(one_data, accel = 1, time_crop=None):
     #defining an acceleration factor and defining arrays for interpolation
-    one_data = np.transpose(one_data, (1, 2, 0))
-    one_data_dims = np.shape(one_data)
-    nFrames = one_data_dims[2]
+    print('one data',one_data,'max one data',tf.math.reduce_max(one_data),'min one data',tf.math.reduce_min(one_data))
+    print('one data first',)
+    one_data = tf.transpose(one_data, perm=[1, 2, 0])
+    
+    one_data_dims = tf.shape(one_data)
+    print('one data dims',one_data_dims,'one data dims 2',one_data_dims[2])
+
+    one_data_dims_nump = np.shape(one_data)
+    print('one data dims numpy',one_data_dims_nump)
+
+    if one_data_dims_nump[2] == None:
+        print('IN THE LOOP')
+        #y=tf.ensure_shape(y,(None,central_crop,central_crop,1))
+        one_data = tf.zeros([192, 192, 20], tf.int32)
+        print('one_data',one_data)
+        #one_data_dims = tf.shape(one_data)
+        one_data_dims = one_data.get_shape()
+        print('after one data dims',one_data_dims)
+
+    
+    nFrames = one_data_dims[2]#issue is that this is zero
     matrix = one_data_dims[0]
     x = y = x1 = y1 = np.linspace(0,matrix-1,matrix)
     z = np.linspace(0,nFrames-1,nFrames)
@@ -357,6 +255,10 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
 
     #interpolation
     meshx1,meshy1,meshz1 = np.meshgrid(x1,y1,z1)
+    #one_data = tf.make_tensor_proto(one_data)
+    #one_data = tf.make_ndarray(one_data)
+    one_data = one_data.eval(session=tf.compat.v1.Session())
+    #one_data = tf.make_ndarray(one_data)
     grid_dat = interpn((x,y,z), one_data, np.array([meshx1,meshy1,meshz1]).T)
 
     normed_grid_dat = grid_dat/np.amax(grid_dat)
@@ -374,7 +276,7 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     # PlotUtils.plotVid(normed_one_data,axis=0,vmax=1)
     # PlotUtils.plotVid(time_crop_rand_start,axis=0,vmax=1)
     return time_crop_rand_start
-
+"""
 #Quick Test
 import h5py
 import numpy as np
@@ -417,8 +319,8 @@ print('Mean time:',stopmean,'\n Last time:',stop)
 # PlotUtils.plotXd(ys,vmax=1,vmin=0)
 imgx=np.concatenate((x,y),axis=1)
 print('imgx',np.shape(imgx),'max imgx',np.amax(imgx))
-PlotUtils.plotVid(imgx,axis=0,vmax=1)
-
+#PlotUtils.plotVid(imgx,axis=0,vmax=1)
+"""
 
 
 
