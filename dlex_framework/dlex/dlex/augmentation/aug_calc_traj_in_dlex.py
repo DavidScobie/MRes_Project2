@@ -135,7 +135,9 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     #cpx size (20,192,192,2). this translates the cpx by the transform
     transform = transform[:,0]
     print('transform',transform,'sum first 20',tf.reduce_sum(transform[0:20]),tf.reduce_sum(transform[21:40]))
-    Zeros = tf.zeros((len(transform)))
+
+    Zeros = tf.zeros((tf.shape(transform)[0]))
+    print('zeros',Zeros)
     transform = tf.expand_dims(transform,1)
     Zeros = tf.expand_dims(Zeros,1)
     transform = tf.experimental.numpy.hstack((transform,Zeros))   
@@ -271,7 +273,7 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     x_ref_max = tf.cast(nFrames_int32-1,tf.float64)
     z1 = tf.linspace(0,nFrames_int32-1,num=N)
 
-    grid_dat = tfp.math.interp_regular_1d_grid(tf.cast(z1,tf.float64), x_ref_min, x_ref_max, one_data, axis=-1)
+    grid_dat = tfp.math.interp_regular_1d_grid(tf.cast(z1,tf.float64), x_ref_min, x_ref_max, tf.cast(one_data,tf.float64), axis=-1)
     print('grid dat',grid_dat)
     normed_grid_dat = grid_dat/tf.math.reduce_max(grid_dat)   
 
@@ -281,11 +283,38 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
 
 
     #repeating the data out to 40 frames and take random starting phase
-    num_repetitions = tf.math.ceil((3*time_crop)/len(z1)) #always 120 frames before cutting
+    print('len(z1)',z1.get_shape())
+
+    # if z1.get_shape()  (None,):
+    #     print('IN HERE')
+    #     num_reps_number = 20
+
+    #num_repetitions = tf.math.ceil((3*time_crop)/len(z1)) #always 120 frames before cutting
+    #num_repetitions = tf.math.ceil((3*time_crop)/tf.shape(z1)) #always 120 frames before cutting
+    #num_repetitions = tf.experimental.numpy.ceil((3*time_crop)/tf.shape(z1))
+    #num_repetitions = tf.experimental.numpy.ceil((3*time_crop)/z1.get_shape())
+    #else:
+    num_reps_number = ((3*time_crop)//tf.shape(z1)[0])
+
 
     normed_grid_dat = tf.transpose(normed_grid_dat, perm=[2,0,1])
+    #rep_normed_grid_dat  = tf.tile(normed_grid_dat,multiples = [num_repetitions,tf.constant([1], tf.int32),tf.constant([1], tf.int32)])
 
-    rep_normed_grid_dat  = tf.tile(normed_grid_dat,(int(num_repetitions),1,1)) # in there for random starting frame
+    #print('num_repetitions',num_repetitions)
+    #print('int_num_reps',tf.experimental.numpy.int32(tf.cast(num_repetitions,tf.int32)))
+
+    print(tf.constant([1,1,1], tf.int32))
+    int32_num_reps = tf.cast(num_reps_number,tf.int32)
+    print(int32_num_reps)
+ 
+    #print(tf.constant([num_repetitions,1,1], tf.int32))
+
+    #to_tile = tf.constant([int32_num_reps,1,1], tf.int32)
+    #to_tile = (num_reps_number,)+(1,1,)
+    to_tile = [num_reps_number,1,1]
+    print('to tile',to_tile,'norm grid shape',tf.shape(normed_grid_dat))
+    #rep_normed_grid_dat  = tf.tile(normed_grid_dat,((num_repetitions),1,1)) # in there for random starting frame
+    rep_normed_grid_dat  = tf.tile(normed_grid_dat,to_tile) # in there for random starting frame
 
     normed_grid_dat = tf.transpose(normed_grid_dat, perm=[1,2,0])
 
