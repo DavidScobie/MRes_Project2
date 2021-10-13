@@ -140,7 +140,8 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     print('zeros',Zeros)
     transform = tf.expand_dims(transform,1)
     Zeros = tf.expand_dims(Zeros,1)
-    transform = tf.experimental.numpy.hstack((transform,Zeros))   
+    #transform = tf.experimental.numpy.hstack((transform,Zeros))  
+    transform = tf.experimental.numpy.hstack((Zeros,transform))  
     cpx=tfa.image.translate(cpx,tf.cast(transform[:-1,:],tf.float32),'bilinear' ) #image:cpx. transaltion:transform. interpolation mode: bilinear
         
     #ROTATION
@@ -339,7 +340,7 @@ sys.path.insert(0, '/sf_ML_work/read_DICOMS/')
 import PlotUtils
 import time
 #trajfile='/media/sf_ML_work/trajectory_files/traj_tGAOJ_13.h5'
-fdata='/media/sf_ML_work/mapped_docker_files/ml/data/yonly/a_few_SAX_40_rest_and_trans_aug_y_only/cache/'
+fdata='/media/sf_ML_work/mapped_docker_files/ml/data/yonly/a_few_SAX_40_rest_and_trans_aug_y_only/'
 
 dataplot='train_00001'
 filename=fdata + dataplot + '.h5'
@@ -349,7 +350,7 @@ image=ori['y']
 print('image old way',np.shape(image))
 
 #loading data in from .mat file
-image = load_data(file='/media/sf_ML_work/paper_data_mat_files/SAXdataAll.mat')
+#image = load_data(file='/media/sf_ML_work/paper_data_mat_files/SAXdataAll.mat')
 print('image',np.shape(image))
 
 #interpolate data to 40 frames with specified accleration factor and start off at random initial temporal frame
@@ -372,9 +373,8 @@ print('Mean time:',stopmean,'\n Last time:',stop)
 print('x',tf.shape(x),'y',tf.shape(y))
 imgx=np.concatenate((x,y),axis=1)
 print('imgx',np.shape(imgx),'max imgx',np.amax(imgx))
-#PlotUtils.plotVid(imgx,axis=0,vmax=1)
+PlotUtils.plotVid(imgx,axis=0,vmax=1)
 """
-
 
 
 
