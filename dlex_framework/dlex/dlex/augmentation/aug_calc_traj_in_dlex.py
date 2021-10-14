@@ -37,12 +37,38 @@ def loadtrajectory(trajfile):
     return traj,dcw
 #loadtrajectory('/home/oj20/UCLjob/Project2/resources/traj_SpiralPerturbedOJ_section1.h5')
 
+def choose_params():
+  #exercise parameter used to make accel, freq and amplitude
+  ex = np.random.uniform(low=0.0, high=1.0, size=None)
+  accel = (1.5*ex)+1
+  min_motion = max_motion = (4*ex)+1
+  resp_freq = (2*ex)+1
+  
+  # return accel
+  return accel, min_motion, max_motion, resp_freq
+
 
 def wrapper_augment(imagex,imagey,
-                    gpu=1,maxrot=45.0,time_axis=2,time_crop=None,min_motion=0, max_motion=0,
-                    central_crop=128, grid_size=[192,192],regsnr=8,deterministic=0,det_counter=10,
-                    resp_freq=1, accel=1
+                    gpu=1,maxrot=45.0,time_axis=2,time_crop=None,
+                    central_crop=128, grid_size=[192,192],regsnr=8,deterministic=0,det_counter=10
                     ):
+
+  accel, min_motion, max_motion, resp_freq = choose_params()
+  print('accel',accel,'resp_freq',resp_freq)
+  #exercise parameter used to make accel, freq and amplitude
+  #ex = tf.random.uniform(shape=[1], minval=0, maxval=None, dtype=tf.dtypes.float32, seed=None, name=None)
+  #print('ALL EX',ex)
+  #print('EX', ex[0])
+  #accel = tf.cast((1.5*ex[0])+1,tf.float64)
+  #print('accel',accel)
+  #min_motion = max_motion = tf.cast((4*ex[0])+1,tf.float32)
+  #min_motion = max_motion = (4*ex[0])+1
+  #resp_freq = (2*ex[0])+1
+  print('min mot',min_motion,'max_motion',max_motion)
+#   min_motion = max_motion = 3
+#   resp_freq = 2
+#   accel = 2
+
 
   seed = rng.make_seeds(2)[0]
   if deterministic==1:
@@ -54,13 +80,13 @@ def wrapper_augment(imagex,imagey,
       
   if gpu==1:
       with tf.device('/gpu:0'):
-          if max_motion>0:
-              x, y = training_augmentation_flow_withmotion(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,min_motion_ampli=min_motion,max_motion_ampli=max_motion,resp_freq=resp_freq)
+          #if max_motion>0:
+            x, y = training_augmentation_flow_withmotion(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,min_motion_ampli=min_motion,max_motion_ampli=max_motion,resp_freq=resp_freq)
           #else:
               #x, y = training_augmentation_flow(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr)
   else:
-      if max_motion>0:
-              x, y = training_augmentation_flow_withmotion(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,min_motion_ampli=min_motion,max_motion_ampli=max_motion,resp_freq=resp_freq)
+      #if max_motion>0:
+            x, y = training_augmentation_flow_withmotion(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr,min_motion_ampli=min_motion,max_motion_ampli=max_motion,resp_freq=resp_freq)
       #else:
               #x, y = training_augmentation_flow(imagey, seed,maxrot=maxrot,time_axis=time_axis,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,regsnr=regsnr)
 
@@ -296,7 +322,7 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     #num_repetitions = tf.experimental.numpy.ceil((3*time_crop)/z1.get_shape())
     #else:
     num_reps_number = ((3*time_crop)//tf.shape(z1)[0])
-
+    print('tf SHAPE', tf.shape(z1)[0])
 
     normed_grid_dat = tf.transpose(normed_grid_dat, perm=[2,0,1])
     #rep_normed_grid_dat  = tf.tile(normed_grid_dat,multiples = [num_repetitions,tf.constant([1], tf.int32),tf.constant([1], tf.int32)])
@@ -362,7 +388,7 @@ stopmean=0
 #for i in range(naugment): 
 start=time.time()
 #mask2 and image are the same in this case (both are y) 
-x,y=wrapper_augment(image,image,accel=1,gpu=0,min_motion=5,max_motion=5,time_crop=time_crop,regsnr=100,deterministic=1,det_counter=10,resp_freq=3)
+x,y=wrapper_augment(image,image,gpu=0,time_crop=time_crop,regsnr=100,deterministic=1,det_counter=10)
 stop=time.time()-start
 stopmean=stopmean+stop
 
