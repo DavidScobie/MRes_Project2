@@ -27,8 +27,8 @@ number_files = len(list)
 # number_files = 4
 print(number_files)
 
-model = load_model('./SAX_rest_and_trans_aug_40_y_only_tfft_gridder_tfmr061/model_64.h5')
-# model = load_model('../multiple_orientations_20/fi_2dssim_optim_mse_L2_mul_ori/model.h5')
+model = load_model('../../read_DICOMS/frames_40/dlex_augment/zcr_aug_trans_var_ex_rate/hopefully_full_model/best.h5')
+# model = load_model('./dlex_augment/zcr_aug_trans_var_ex_rate/best.h5')
 model.summary()
 
 #Read in the first dataset

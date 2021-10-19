@@ -50,7 +50,7 @@ def choose_params():
 
 def wrapper_augment(imagex,imagey,
                     gpu=1,maxrot=45.0,time_axis=2,time_crop=None,
-                    central_crop=128, grid_size=[192,192],regsnr=8,deterministic=0,det_counter=10
+                    central_crop=192, grid_size=[192,192],regsnr=8,deterministic=0,det_counter=10
                     ):
 
   accel, min_motion, max_motion, resp_freq = choose_params()
@@ -116,6 +116,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     mag=tf.image.stateless_random_contrast(mag,lower=0.5,upper=1.5 , seed=seed)
     
     cpx=tf.cast(mag,tf.complex64)*tf.exp(1j*tf.cast(phs,tf.complex64))
+    print('CPX SIZE',tf.shape(cpx))
     del mag,phs
     
     #Flip/Roll
@@ -133,7 +134,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     
     #MOTION
     #ApplyMotion on 50% of data (exercise vs rest)
-    cpx=tf.transpose(cpx,[3,1,2,0]) #what is cpx?
+    cpx=tf.transpose(cpx,[3,1,2,0]) 
     global augment_counter
     #random motion amplitude inbetween specified limits
     motion_ampli = tf.random.uniform([1],minval=min_motion_ampli,maxval=max_motion_ampli,dtype=tf.dtypes.float32,seed=None,name=None)/(time_crop/2)
@@ -235,18 +236,9 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     x=x/tf.cast(tf.reduce_max(tf.abs(x)),dtype=x.dtype)
     #label[label>0]=label[label>0]/tf.reduce_max(label)
     
-    # y=tf.concat((tf.math.real(cpx),tf.math.imag(cpx)),axis=-1)
-    # x=tf.concat((tf.math.real(x),tf.math.imag(x)),axis=-1)
-    
-    # x=tf.ensure_shape(x,(None,central_crop,central_crop,2))
-    # y=tf.ensure_shape(y,(None,central_crop,central_crop,2))
-    
     y=tf.math.abs(cpx)
     x=tf.math.abs(x)
-    
-    # x=tf.ensure_shape(x,(None,central_crop,central_crop,1))
-    # y=tf.ensure_shape(y,(None,central_crop,central_crop,1))
-    
+
     return x,y
 
 def load_data(file=None):
