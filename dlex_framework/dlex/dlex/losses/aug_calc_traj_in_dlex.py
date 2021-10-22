@@ -154,7 +154,7 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     #print('radial_weights',tf.shape(radial_weights), 'max rad_wei', tf.max(radial_weights), 'min rad_wei', np.min(radial_weights)) #(40,1,4992)
     #radial_weights = tf.squeeze(tf.transpose(radial_weights, perm=[1,0,2])) #(1,40,4992) CRUCIAL, IF OTHER WAY ROUND THE ORDER IS WRONG
     print('TRAJ',tf.shape(traj))
-    radial_weights = tf.reshape(radial_weights,[traj.shape[0], traj.shape[1]])
+    radial_weights = tf.reshape(radial_weights,[traj.shape[0], traj.shape[1]]) #This was the bug fix
     print('RAD WEIH',radial_weights.shape)
     radial_weights = tf.reshape(radial_weights, [1 , -1]) #(1,199680)
 
@@ -168,16 +168,21 @@ def training_augmentation_flow_withmotion(image_label,seed,maxrot=45.0,time_axis
     """
     Crop
     """
+
+    #cpx=tf.expand_dims(cpx,axis=-1)
+    x=tf.expand_dims(x,axis=-1) #making it (40,192,192,1) to work with training
     
     cpx=cpx/tf.cast(tf.reduce_max(tf.abs(cpx)),dtype=cpx.dtype)
     x=x/tf.cast(tf.reduce_max(tf.abs(x)),dtype=x.dtype)
 
-    cpx = tf.squeeze(cpx)
+    # cpx = tf.squeeze(cpx)
 
     print('cpx size',tf.shape(cpx),'x',tf.shape(x))
     
     y=tf.math.abs(cpx)
     x=tf.math.abs(x)
+
+    print('shape x ',tf.shape(x),'shape y',tf.shape(y))
 
     return x,y
 
@@ -286,9 +291,8 @@ sys.path.insert(0, '/sf_ML_work/read_DICOMS/')
 
 import PlotUtils
 import time
-#trajfile='/media/sf_ML_work/trajectory_files/traj_tGAOJ_13.h5'
-#fdata='/media/sf_ML_work/mapped_docker_files/ml/data/yonly/a_few_SAX_40_rest_and_trans_aug_y_only/'
-fdata = '/media/sf_ML_work/mapped_docker_files/ml/data/yonly/a_few_frames_40_rest_yonly/'
+fdata = '/host/data/SAX/Royal_Free/SAX_Royal_Free_40_192_noise_yonly/'
+#fdata = '/media/sf_ML_work/mapped_docker_files/ml/data/yonly/a_few_frames_40_rest_yonly/'
 #fdata = '/media/sf_ML_work/mapped_docker_files/ml/data/yonly/Royal_Free_SAX_data/a_couple_SAX_Royal_Free_40_192_noise_yonly/'
 
 dataplot='train_00001'
@@ -322,7 +326,7 @@ print('Mean time:',stopmean,'\n Last time:',stop)
 print('x',tf.shape(x),'y',tf.shape(y))
 imgx=np.concatenate((x,y),axis=1)
 print('imgx',np.shape(imgx),'max imgx',np.amax(imgx))
-PlotUtils.plotVid(imgx,axis=0,vmax=1)
+#PlotUtils.plotVid(imgx,axis=0,vmax=1)
 """
 
 
