@@ -19,16 +19,16 @@ patient_code = "h5_slices/"
 #filepath = os.path.join("../data/firs_scan/gridded/",patient_code)
 filepath = os.path.join("../../BART/data/meas_ex3_stack/",patient_code)
 
-# full_filepath = os.path.join("/media/sf_ML_work/read_DICOMS/data/firs_scan/gridded",patient_code) #virtual box
-full_filepath = os.path.join("/media/sf_ML_work/BART/data/meas_ex3_stack/",patient_code)
+full_filepath = os.path.join("C:/PHD/MRes_project/ML_work/BART/data/meas_ex3_stack/",patient_code)
+#full_filepath = os.path.join("/media/sf_ML_work/BART/data/meas_ex3_stack/",patient_code)
 
 list = os.listdir(full_filepath) # dir is your directory path
 number_files = len(list)
 # number_files = 4
 print(number_files)
 
-model = load_model('../../read_DICOMS/frames_40/dlex_augment/zcr_aug_trans_var_ex_rate/hopefully_full_model/best.h5')
-# model = load_model('./dlex_augment/zcr_aug_trans_var_ex_rate/best.h5')
+# model = load_model('../../read_DICOMS/frames_40/dlex_augment/zcr_aug_trans_var_ex_rate/hopefully_full_model/best.h5')
+model = load_model('../../read_DICOMS/frames_40/dlex_augment/Royal_Free_aug_trans_var_ex_rate/14_epochs/best_good_inp_size.h5')
 model.summary()
 
 #Read in the first dataset
@@ -66,7 +66,10 @@ for i in range(number_files - 1):
 
     fnext = tf.transpose(fi, perm=[3, 0, 1, 2])
     bigger_dset = tf.expand_dims(fnext, axis=4)
+    # print('bigger dset size',tf.shape(bigger_dset))
+    # print('model input shape',model.input_shape)
     y_pred = model.predict(bigger_dset)
+    #y_pred = model.predict(bigger_dset, batch_size=8)
 
     if i == 0:
         y_pred1 = y_pred
@@ -90,7 +93,7 @@ test_pred_np = tf.make_ndarray(tf.make_tensor_proto(test_pred))
 # PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 
-#sio.savemat('SAX_rest_and_trans_aug_40_y_only_tfft_gridder_tfmr061_ex3_prosp_new_grid.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
+sio.savemat('Royal_Free_aug_trans_var_ex_rate_14_epochs_ex3_prosp_new_grid.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
 
 plt.show()
 

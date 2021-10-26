@@ -13,7 +13,7 @@ clear train_orig_data
 
 s = struct();
 %for i = 1:size(all_dat,2)
-for i = 34:34 %Manually choose train and val split 1:1988 and 1989:2209
+for i = 1989:2209 %Manually choose train and val split 1:1988 and 1989:2209
     %Read the data in
     dataIn = all_dat{i};
     
@@ -27,7 +27,7 @@ for i = 34:34 %Manually choose train and val split 1:1988 and 1989:2209
         disp('there is at least 1 nan in the data before preproc')
     end
     
-    %permute if necessary the data is wron way round
+    %permute if necessary if the data is wrong way round
     if size(dataIn,1) == 222
         dataIn = permute(dataIn,[2 1 3]);
     elseif size(dataIn,1) == 224
@@ -35,7 +35,6 @@ for i = 34:34 %Manually choose train and val split 1:1988 and 1989:2209
     end
     
     %Pad onto (240,240,nFrames)
-    %pad = (272 - size(dataIn))/2;
     nFrames = size(dataIn,3);
     tempIn = zeros(240,240, nFrames);  
     %tempIn(pad(1)+1 : size(dataIn,1) + pad(1) , pad(2)+1 : size(dataIn,2)+pad(2), :) = dataIn;
@@ -67,17 +66,13 @@ for i = 34:34 %Manually choose train and val split 1:1988 and 1989:2209
     
     %If the last frame is full of nans then get rid of last frame
     if sum(isnan(Interped(:))) > 0
-%         [x,y] = meshgrid(0:239, 0:239);
-%         [x1,y1] = meshgrid(0:newSp:239, 0:newSp:239);
-%         last_frame = interp2(x,y,tempIn(:,:,size(tempIn,3)),x1,y1);
-%         Interped(:,:,size(Interped,3)) = last_frame;
-
         Interped = Interped(:,:,1:nPos - 1);
-%         Interped = Interped;
+        time_repeated = zeros(192,192,(nPos-1)*4);
+    else
+        time_repeated = zeros(192,192,nPos*4);
     end
     
     %Repeat the data out to 40 frames
-    time_repeated = zeros(192,192,nPos*4);
     time_40_fram = zeros(192,192,40);
     time_repeated(:,:,:) = repmat(Interped,[1 1 4]);
     time_40_fram(:,:,:) = time_repeated(:,:,1:40);
@@ -108,7 +103,7 @@ for i = 34:34 %Manually choose train and val split 1:1988 and 1989:2209
         disp(result)
         disp('there is at least 1 nan in the data after preproc')
         
-        %disp(find(isnan(time_40_fram_perm)));
+        %disp(find(isnan(time_40_fram_perm))); %Finding indicies of Nans
     end
     
     %Check if the max value of any of the data is 0
@@ -118,9 +113,9 @@ for i = 34:34 %Manually choose train and val split 1:1988 and 1989:2209
     end
     
     %Save it as a structure
-    s(i-33).y = time_40_fram_perm;
+    s(i-1988).y = time_40_fram_perm;
 end
 
 save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/data/Royal_Free_SAX_data/RF_full_set_2/';
 
-% dlexsave(save_dir, s, 'prefixes', 'train');
+dlexsave(save_dir, s, 'prefixes', 'val');
