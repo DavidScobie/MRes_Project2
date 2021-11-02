@@ -1,20 +1,20 @@
 %load in the slices of the prospective gridded data nd flip them the right way round 
-load('C:\PHD\MRes_project\ML_work\BART\data\meas_ex3_stack\gridded_image_data\meas_MID00576_FID48987_ex3_stack_sl_0_1.mat')
+load('C:\PHD\MRes_project\ML_work\BART\data\meas_ex1_stack\gridded_image_data\meas_MID00574_FID48985_ex1_stack_sl_0_1.mat')
 flipped_img_0_1 = flip(img_data,3);
 
-load('C:\PHD\MRes_project\ML_work\BART\data\meas_ex3_stack\gridded_image_data\meas_MID00576_FID48987_ex3_stack_sl_2_3.mat')
+load('C:\PHD\MRes_project\ML_work\BART\data\meas_ex1_stack\gridded_image_data\meas_MID00574_FID48985_ex1_stack_sl_2_3.mat')
 flipped_img_2_3 = flip(img_data,3);
 
-load('C:\PHD\MRes_project\ML_work\BART\data\meas_ex3_stack\gridded_image_data\meas_MID00576_FID48987_ex3_stack_sl_4_5.mat')
+load('C:\PHD\MRes_project\ML_work\BART\data\meas_ex1_stack\gridded_image_data\meas_MID00574_FID48985_ex1_stack_sl_4_5.mat')
 flipped_img_4_5 = flip(img_data,3);
 
-load('C:\PHD\MRes_project\ML_work\BART\data\meas_ex3_stack\gridded_image_data\meas_MID00576_FID48987_ex3_stack_sl_6_7.mat')
+load('C:\PHD\MRes_project\ML_work\BART\data\meas_ex1_stack\gridded_image_data\meas_MID00574_FID48985_ex1_stack_sl_6_7.mat')
 flipped_img_6_7 = flip(img_data,3);
 
-load('C:\PHD\MRes_project\ML_work\BART\data\meas_ex3_stack\gridded_image_data\meas_MID00576_FID48987_ex3_stack_sl_8_9.mat')
+load('C:\PHD\MRes_project\ML_work\BART\data\meas_ex1_stack\gridded_image_data\meas_MID00574_FID48985_ex1_stack_sl_8_9.mat')
 flipped_img_8_9 = flip(img_data,3);
 
-load('C:\PHD\MRes_project\ML_work\BART\data\meas_ex3_stack\gridded_image_data\meas_MID00576_FID48987_ex3_stack_sl_10_11.mat')
+load('C:\PHD\MRes_project\ML_work\BART\data\meas_ex1_stack\gridded_image_data\meas_MID00574_FID48985_ex1_stack_sl_10_11.mat')
 flipped_img_10_11 = flip(img_data,3);
 
 %Stack all of the slices together into 1 data object
@@ -37,8 +37,8 @@ for i = 1:dims(1)
     s(i).x = abs(squeeze(normed_img(i,:,:,:)));
 end
 
-save_dir = 'C:/PHD/MRes_project/ML_work/BART/data/meas_ex3_stack/h5_slices';
-% dlexsave(save_dir, s, 'prefixes', 'd1');
+save_dir = 'C:/PHD/MRes_project/ML_work/BART/data/meas_ex1_stack/h5_slices';
+dlexsave(save_dir, s, 'prefixes', 'd1');
 
 %%
 

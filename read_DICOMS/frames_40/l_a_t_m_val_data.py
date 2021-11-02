@@ -34,7 +34,7 @@ number_files = 10
 print(number_files)
 
 # model = load_model('../../read_DICOMS/frames_40/dlex_augment/zcr_aug_trans_var_ex_rate/hopefully_full_model/best.h5')
-model = load_model('../../read_DICOMS/frames_40/dlex_augment/Royal_Free_aug_trans_var_ex_rate/21_epochs/best_good_inp_size.h5')
+model = load_model('../../read_DICOMS/frames_40/dlex_augment/Royal_Free_aug_trans_var_ex_rate/bs4_augment_cn1_LR_0p0001/best_good_inp_size.h5')
 model.summary()
 
 #Read in the first dataset
@@ -105,7 +105,7 @@ print('low_res_np_shape',tf.shape(low_res_np))
 PlotUtils.plotVid(np.squeeze(test_pred_np[1,:,:,:]),vmin=0,vmax=1,axis=0)
 PlotUtils.plotVid(np.squeeze(low_res_np[1,:,:,:]),vmin=0,vmax=1,axis=0)
 
-sio.savemat('Royal_Free_aug_trans_var_ex_rate_debug_bs8_21_epo_RF_full_set_2_val_1_to_10.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
+sio.savemat('Royal_Free_aug_trans_var_ex_rate_bs4_augment_cn1_LR_0p0001_14epo_RF_full_set_2_val_1_to_10.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
 
 plt.show()
 

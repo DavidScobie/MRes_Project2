@@ -17,9 +17,9 @@ os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 patient_code = "h5_slices/"
 
 #filepath = os.path.join("../data/firs_scan/gridded/",patient_code)
-filepath = os.path.join("../../BART/data/meas_ex3_stack/",patient_code)
+filepath = os.path.join("../../BART/data/meas_rest_stack/",patient_code)
 
-full_filepath = os.path.join("C:/PHD/MRes_project/ML_work/BART/data/meas_ex3_stack/",patient_code)
+full_filepath = os.path.join("C:/PHD/MRes_project/ML_work/BART/data/meas_rest_stack/",patient_code)
 #full_filepath = os.path.join("/media/sf_ML_work/BART/data/meas_ex3_stack/",patient_code)
 
 list = os.listdir(full_filepath) # dir is your directory path
@@ -28,7 +28,7 @@ number_files = len(list)
 print(number_files)
 
 # model = load_model('../../read_DICOMS/frames_40/dlex_augment/zcr_aug_trans_var_ex_rate/hopefully_full_model/best.h5')
-model = load_model('../../read_DICOMS/frames_40/dlex_augment/Royal_Free_aug_trans_var_ex_rate/21_epochs/best_good_inp_size.h5')
+model = load_model('../../read_DICOMS/frames_40/dlex_augment/Royal_Free_aug_trans_var_ex_rate/bs4_augment_cn1_LR_0p0001/best_good_inp_size.h5')
 model.summary()
 
 #Read in the first dataset
@@ -93,7 +93,7 @@ test_pred_np = tf.make_ndarray(tf.make_tensor_proto(test_pred))
 # PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 
-sio.savemat('Royal_Free_aug_trans_var_ex_rate_debug_bs8_21_epo_ex3_prosp_new_grid.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
+sio.savemat('Royal_Free_aug_trans_var_ex_rate_bs4_augment_cn1_LR_0p0001_14epo_rest_prosp.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
 
 plt.show()
 

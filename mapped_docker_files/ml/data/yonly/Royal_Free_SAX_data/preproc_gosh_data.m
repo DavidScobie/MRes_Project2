@@ -4,7 +4,7 @@
 %structure
 
 %Combine training and test data into 1 big dataset
-% all_dat = [test_orig_data, train_orig_data];
+%all_dat = [test_orig_data, train_orig_data];
 all_rr_int_final = [test_rr_int_final, train_rr_int_final]; 
 
 %Clear variables to save memory
@@ -73,9 +73,12 @@ for i = 1989:2209 %Manually choose train and val split 1:1988 and 1989:2209
     end
     
     %Repeat the data out to 40 frames
-    time_40_fram = zeros(192,192,40);
-    time_repeated(:,:,:) = repmat(Interped,[1 1 4]);
-    time_40_fram(:,:,:) = time_repeated(:,:,1:40);
+%     time_40_fram = zeros(192,192,40);
+%     time_repeated(:,:,:) = repmat(Interped,[1 1 4]);
+%     time_40_fram(:,:,:) = time_repeated(:,:,1:40);
+
+    %Keep the data at no frames for 1 cardiac cycle
+    time_40_fram = Interped;
     
     %Add some noise to the data
     avData = mean(time_40_fram, 3);    
@@ -93,6 +96,7 @@ for i = 1989:2209 %Manually choose train and val split 1:1988 and 1989:2209
         time_40_fram(:,:,:) = time_40_fram(:,:,:) ./ max(max(max(time_40_fram)));
     end
     
+    clear time_40_fram_perm
     %Permute to correct image dimensions
     time_40_fram_perm(:,:,:) = permute(time_40_fram(:,:,:),[3 1 2]);
     
@@ -116,6 +120,6 @@ for i = 1989:2209 %Manually choose train and val split 1:1988 and 1989:2209
     s(i-1988).y = time_40_fram_perm;
 end
 
-save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/data/Royal_Free_SAX_data/RF_full_set_2/';
+save_dir = 'C:/PHD/MRes_project/ML_work/read_DICOMS/data/Royal_Free_SAX_data/RF_full_set_var_temp_len/';
 
 dlexsave(save_dir, s, 'prefixes', 'val');

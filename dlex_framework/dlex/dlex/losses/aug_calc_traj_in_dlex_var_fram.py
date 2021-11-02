@@ -21,8 +21,8 @@ import matplotlib.pyplot as plt
 
 def choose_params():
   #exercise parameter used to make accel, freq and amplitude
-  #ex = np.random.uniform(low=0.0, high=1.0, size=None)
-  ex = 1.2
+  ex = np.random.uniform(low=0.0, high=1.0, size=None)
+  #ex = 1.2
   accel = (1.5*ex)+1
   min_motion = max_motion = (6*ex)+0 #6 pixels is max motion
   resp_freq = (1*ex)+0.25
@@ -177,42 +177,56 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     #if accel=1 then dont need interp just choose random start frame
     if accel == 1:
         print('augmentation not happening')
-        rep_normed_grid_dat  = tf.tile(one_data,[2,1,1]) #(80,192,192)
+        rep_normed_grid_dat  = tf.tile(one_data,[2,1,1]) #(30:70,192,192)
+
+        #Finding how many we need to repeat matrix by
+        rep_normed_grid_dat_dims = tf.shape(rep_normed_grid_dat) #(30:70,192,192)
+        rep_normed_grid_dat_frames = tf.cast(rep_normed_grid_dat_dims[0],tf.int32) #(30:70)
+        num_reps_number = tf.cast(((3*time_crop)/rep_normed_grid_dat_frames),tf.int32) #2:4
+
+        #tiling out the matrix
+        to_tile = [num_reps_number,1,1] #[2:4,1,1]
+        rep_normed_grid_dat_2  = tf.tile(rep_normed_grid_dat,to_tile) # approx (120,192,192). Can be (108:120,192,192)
+ 
         del one_data
+        #choosing random starting frame
         rand_start_frame = tf.experimental.numpy.random.randint(0,high = time_crop - 1) #0 to 39 some number
-        time_crop_rand_start = rep_normed_grid_dat[rand_start_frame:rand_start_frame + time_crop, :, :] # (40,192,192)
+        time_crop_rand_start = rep_normed_grid_dat_2[rand_start_frame:rand_start_frame + time_crop, :, :] # (40,192,192)
     else:
         print('augmentation is happening')
-        one_data = tf.transpose(one_data, perm=[1, 2, 0]) #make it (192,192,40)
+        one_data = tf.transpose(one_data, perm=[1, 2, 0]) #make it (192,192,n)
         
-        one_data_dims = tf.shape(one_data) #(192,192,40)
+        one_data_dims = tf.shape(one_data) #(192,192,n)
 
-        nFrames_int32 = tf.cast(one_data_dims[2],tf.int32) #40
+        nFrames_int32 = tf.cast(one_data_dims[2],tf.int32) #n
         matrix = tf.cast(one_data_dims[0],tf.int32) #192
         x = y = x1 = y1 = tf.linspace(0,matrix-1,matrix) #[0,1,2,...,190,191]
-        z = tf.linspace(0,nFrames_int32-1,nFrames_int32) #[0,1,2,...,38,39]
-        nFrames_float64 = tf.cast(nFrames_int32,tf.float64) #40
-        spacing = (nFrames_float64-1)/((nFrames_float64/accel)-1) #39/((40/accel)-1)
-        N = tf.cast(((nFrames_float64)/spacing),tf.int32) #40/spacing
+        z = tf.linspace(0,nFrames_int32-1,nFrames_int32) #[0,1,2,...,n-2,n-1]
+        nFrames_float64 = tf.cast(nFrames_int32,tf.float64) #n
+        spacing = (nFrames_float64-1)/((nFrames_float64/accel)-1) #(n-1)/((n/accel)-1)
+        N = tf.cast(((nFrames_float64)/spacing),tf.int32) #n/spacing
 
         #tensorflow interpolation in time
         x_ref_min = tf.cast(0,tf.float64) #0
-        x_ref_max = tf.cast(nFrames_int32-1,tf.float64) #39
-        z1 = tf.linspace(0,nFrames_int32-1,num=N) #[0,...,39]  N points
+        x_ref_max = tf.cast(nFrames_int32-1,tf.float64) #n-1
+        z1 = tf.linspace(0,nFrames_int32-1,num=N) #[0,...,n-1]  N points
 
-        grid_dat = tfp.math.interp_regular_1d_grid(tf.cast(z1,tf.float64), x_ref_min, x_ref_max, tf.cast(one_data,tf.float64), axis=-1) #(192,192,15:40)
+        grid_dat = tfp.math.interp_regular_1d_grid(tf.cast(z1,tf.float64), x_ref_min, x_ref_max, tf.cast(one_data,tf.float64), axis=-1) #(192,192,6:35) ish
 
         del one_data
 
         normed_grid_dat = grid_dat/tf.math.reduce_max(grid_dat) #normalize
+
+        #num_reps_number = ((3*time_crop)//N) #3:8.  3 seems like a good number as it gets range correct in time, not huge data but not too small
+        grid_dat_shape = tf.shape(grid_dat) #(192,192,6:35)
+        grid_dat_frames = tf.cast(grid_dat_shape[2],tf.int32) #6:35
+        num_reps_number = tf.cast(((3*time_crop)/grid_dat_frames),tf.int32) #3:20
         del grid_dat
 
-        num_reps_number = ((3*time_crop)//N) #3:8.  3 seems like a good number as it gets range correct in time, not huge data but not too small
-
-        normed_grid_dat = tf.transpose(normed_grid_dat, perm=[2,0,1]) #(15:40,192,192)
+        normed_grid_dat = tf.transpose(normed_grid_dat, perm=[2,0,1]) #(6:35,192,192)
         print('normed_grid_dat',tf.shape(normed_grid_dat))
 
-        to_tile = [num_reps_number,1,1] #[3:8,1,1]
+        to_tile = [num_reps_number,1,1] #[3:20,1,1]
         print('to_tile',to_tile)
 
         rep_normed_grid_dat  = tf.tile(normed_grid_dat,to_tile) # approx (120,192,192). Can be (108:120,192,192)
@@ -228,7 +242,7 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     return time_crop_rand_start
 
 ####################
-
+""""
 #Quick Test
 import h5py
 import numpy as np
@@ -255,29 +269,30 @@ duration=time.time()-start
 print('duration',duration)
 
 imgx=np.concatenate((x,y),axis=1)
+#PlotUtils.plotVid(imgx,axis=0,vmax=1)
 
 #check if nans in the data
 
-vector = tf.math.is_nan(x)
-#print(vector)
-print(np.max(vector))
+# vector = tf.math.is_nan(x)
+# #print(vector)
+# print(np.max(vector))
 
-np_vector = vector.numpy()
-#print(np_vector)
-if np_vector.any():
-    print('here!')
+# np_vector = vector.numpy()
+# #print(np_vector)
+# if np_vector.any():
+#     print('here!')
 
-vector2 = tf.math.is_nan(y)
-#print(vector)
-print(np.max(vector2))
+# vector2 = tf.math.is_nan(y)
+# #print(vector)
+# print(np.max(vector2))
 
-np_vector2 = vector2.numpy()
-#print(np_vector)
-if np_vector2.any():
-    print('here2!')
+# np_vector2 = vector2.numpy()
+# #print(np_vector)
+# if np_vector2.any():
+#     print('here2!')
+"""
 
 
 
-#PlotUtils.plotVid(imgx,axis=0,vmax=1)
 
 
