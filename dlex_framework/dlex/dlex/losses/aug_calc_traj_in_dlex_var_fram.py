@@ -18,6 +18,7 @@ import tensorflow_mri as tfmr
 import numpy as np
 import tensorflow_probability as tfp
 import matplotlib.pyplot as plt
+import scipy.io as sio
 
 def choose_params():
   #rest or aug?
@@ -27,8 +28,9 @@ def choose_params():
     ex = np.random.uniform(low=0.0, high=0.15, size=None)
   else:
     #at exercise we want augmentation at the upper end of the scale
-    ex = np.random.uniform(low=0.5, high=1.0, size=None)
+    ex = np.random.uniform(low=0.6, high=1.0, size=None)
 
+  ex=0.5
   accel = (1.5*ex)+1
   min_motion = max_motion = (6*ex)+0 #6 pixels is max motion
   resp_freq = (1*ex)+0.25
@@ -176,6 +178,8 @@ def training_augmentation_flow(y,time_crop=None,central_crop=128,grid_size=[192,
     y=tf.math.abs(y)
     x=tf.math.abs(x)
 
+
+
     return x,y
 
 
@@ -254,7 +258,7 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     return time_crop_rand_start
 
 ####################
-""""
+
 #Quick Test
 import h5py
 import numpy as np
@@ -264,9 +268,10 @@ sys.path.insert(0, '/sf_ML_work/read_DICOMS/')
 import PlotUtils
 import time
 
-fdata = '/host/data/SAX/Royal_Free/RF_full_set_2/'
+fdata = '/host/data/SAX/Royal_Free/RF_full_set_var_temp_len/'
+#fdata = '/host/data/SAX/Royal_Free/RF_full_set_2/'
 
-dataplot='train_00070'
+dataplot='val_00001'
 filename=fdata + dataplot + '.h5'
 
 ori= h5py.File(filename, 'r')
@@ -280,8 +285,12 @@ x,y=wrapper_augment(image,image,gpu=0,time_crop=time_crop,augment=1)
 duration=time.time()-start
 print('duration',duration)
 
+x_np = tf.make_ndarray(tf.make_tensor_proto(x))
+y_np = tf.make_ndarray(tf.make_tensor_proto(y))
+sio.savemat('RF_full_set_var_temp_len_val1x_and_y_with_aug_ex0p5.mat',{'y':y_np,'x':x_np})
+
 imgx=np.concatenate((x,y),axis=1)
-#PlotUtils.plotVid(imgx,axis=0,vmax=1)
+PlotUtils.plotVid(imgx,axis=0,vmax=1)
 
 #check if nans in the data
 
@@ -302,7 +311,7 @@ imgx=np.concatenate((x,y),axis=1)
 # #print(np_vector)
 # if np_vector2.any():
 #     print('here2!')
-"""
+
 
 
 
