@@ -20,9 +20,15 @@ import tensorflow_probability as tfp
 import matplotlib.pyplot as plt
 
 def choose_params():
-  #exercise parameter used to make accel, freq and amplitude
-  ex = np.random.uniform(low=0.0, high=1.0, size=None)
-  #ex = 1.2
+  #rest or aug?
+  decide = np.random.randint(2) #a random integer of either 0 or 1
+  if decide == 0:
+    #at rest want a bit of aug to simulate respiratory motion
+    ex = np.random.uniform(low=0.0, high=0.15, size=None)
+  else:
+    #at exercise we want augmentation at the upper end of the scale
+    ex = np.random.uniform(low=0.5, high=1.0, size=None)
+
   accel = (1.5*ex)+1
   min_motion = max_motion = (6*ex)+0 #6 pixels is max motion
   resp_freq = (1*ex)+0.25
@@ -140,9 +146,11 @@ def training_augmentation_flow(y,time_crop=None,central_crop=128,grid_size=[192,
     x = y #(40,192,192,1)
     
     x=tf.squeeze(x) #make it acceptable for tfft.nufft   (40,192,192)
+    #tf.print('x',tf.shape(x))
 
     traj = tfmr.radial_trajectory(192, views=13, phases=40, ordering='tiny', angle_range='full', readout_os=2.0) #(40, 13, 384, 2) 
     traj = tf.reshape(traj, [traj.shape[0], traj.shape[1]*traj.shape[2] , traj.shape[3]]) #(40, 4992,2)
+    print('traj',tf.shape(traj))
     kspace = tfft.nufft(tf.cast(x,tf.complex64), traj,transform_type='type_2', fft_direction='forward') #(40,4992)
     kspace = tf.reshape(kspace, [1 , -1]) #(1,199680)    
 
@@ -177,19 +185,23 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     #if accel=1 then dont need interp just choose random start frame
     if accel == 1:
         print('augmentation not happening')
-        rep_normed_grid_dat  = tf.tile(one_data,[2,1,1]) #(30:70,192,192)
+        rep_normed_grid_dat  = tf.tile(one_data,[3,1,1]) #(30:70,192,192)
 
         #Finding how many we need to repeat matrix by
         rep_normed_grid_dat_dims = tf.shape(rep_normed_grid_dat) #(30:70,192,192)
         rep_normed_grid_dat_frames = tf.cast(rep_normed_grid_dat_dims[0],tf.int32) #(30:70)
-        num_reps_number = tf.cast(((3*time_crop)/rep_normed_grid_dat_frames),tf.int32) #2:4
+        num_reps_number = tf.cast(((4*time_crop)/rep_normed_grid_dat_frames),tf.int32) #2:4
 
         #tiling out the matrix
-        to_tile = [num_reps_number,1,1] #[2:4,1,1]
+        to_tile = [1+num_reps_number,1,1] #[2:4,1,1]
         rep_normed_grid_dat_2  = tf.tile(rep_normed_grid_dat,to_tile) # approx (120,192,192). Can be (108:120,192,192)
  
         del one_data
         #choosing random starting frame
+        #rngd2 = tf.shape(rep_normed_grid_dat_2)
+        # rngd2_frames = tf.cast(rep_normed_grid_dat_dims[0],tf.int32)
+        # tf.print('rep_normed_grid_dat_2',tf.shape(rep_normed_grid_dat_2))
+        #rand_start_frame = 39
         rand_start_frame = tf.experimental.numpy.random.randint(0,high = time_crop - 1) #0 to 39 some number
         time_crop_rand_start = rep_normed_grid_dat_2[rand_start_frame:rand_start_frame + time_crop, :, :] # (40,192,192)
     else:

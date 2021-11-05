@@ -10,6 +10,7 @@ import PlotUtils
 from PlotUtils import *
 import scipy.io as sio
 import os
+import tensorflow_addons as tfa
 
 #Get it to run on the CPU because CPU is 16GB whereas GPU is 4GB, (and we use over 6GB here)
 os.environ["CUDA_VISIBLE_DEVICES"]="-1" 
@@ -28,12 +29,13 @@ number_files = len(list)
 print(number_files)
 
 # model = load_model('../../read_DICOMS/frames_40/dlex_augment/zcr_aug_trans_var_ex_rate/hopefully_full_model/best.h5')
-model = load_model('../../read_DICOMS/frames_40/dlex_augment/Royal_Free_aug_trans_var_ex_rate/bs4_augment_cn1_LR_0p0001/best_good_inp_size.h5')
+model = load_model('../../read_DICOMS/frames_40/dlex_augment/Royal_Free_aug_trans_var_ex_rate/var_fram_size/70epo/best_good_inp_size.h5')
 model.summary()
 
 #Read in the first dataset
 # fstart = h5py.File(os.path.join(filepath,'/d1_00001.h5'),'r')['x']
 fstart = h5py.File(os.path.join(filepath, 'd1_00001.h5'),'r')['x']
+
 fstart = tf.expand_dims(fstart, axis=3)
 
 
@@ -42,6 +44,10 @@ fstart = tf.expand_dims(fstart, axis=3)
 for i in range(number_files - 1):
     filepath2 = os.path.join(filepath,'d1_%05d.h5') % (i+2)
     fi = h5py.File(filepath2,'r')['x']
+
+    #rotate if necessary
+    fi = tfa.image.rotate(fi,np.pi)
+
     fi = tf.expand_dims(fi, axis=3)
     fnext_lowres = tf.concat([fstart,fi], axis=3)
     fstart = fnext_lowres
@@ -55,15 +61,12 @@ bigger_dset_lowres = tf.expand_dims(fnext_lowres, axis=4)
 #Squeeze to make image
 low_res = tf.squeeze(tf.image.convert_image_dtype(bigger_dset_lowres, tf.float32))
 
-
-
 #Get all of the data to be put through the model and then stacked aferwards
 
 for i in range(number_files - 1):
     filepath2 = os.path.join(filepath,'d1_%05d.h5') % (i+2)
     fi = h5py.File(filepath2,'r')['x']
     fi = tf.expand_dims(fi, axis=3)
-
     fnext = tf.transpose(fi, perm=[3, 0, 1, 2])
     bigger_dset = tf.expand_dims(fnext, axis=4)
     # print('bigger dset size',tf.shape(bigger_dset))
@@ -93,8 +96,7 @@ test_pred_np = tf.make_ndarray(tf.make_tensor_proto(test_pred))
 # PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 
-sio.savemat('Royal_Free_aug_trans_var_ex_rate_bs4_augment_cn1_LR_0p0001_14epo_rest_prosp.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
+#sio.savemat('Royal_Free_aug_trans_var_ex_rate_var_fram_size_70epo_rest_prosp.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
 
 plt.show()
-
 
