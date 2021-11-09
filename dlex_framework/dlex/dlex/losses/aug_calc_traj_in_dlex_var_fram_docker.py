@@ -132,8 +132,8 @@ def training_augmentation_flow_withmotion(y,time_crop=None,central_crop=128,grid
 
     x=tf.expand_dims(x,axis=-1) #making it (40,192,192,1) to work with training
  
-    y = (y - tf.cast(tf.reduce_min(tf.abs(y)),dtype=y.dtype)) / (tf.cast(tf.reduce_max(tf.abs(y)),dtype=y.dtype) - tf.cast(tf.reduce_min(tf.abs(y)),dtype=y.dtype))
-    x = (x - tf.cast(tf.reduce_min(tf.abs(x)),dtype=x.dtype)) / (tf.cast(tf.reduce_max(tf.abs(x)),dtype=x.dtype) - tf.cast(tf.reduce_min(tf.abs(x)),dtype=x.dtype))
+    y=y/tf.cast(tf.reduce_max(tf.abs(y)),dtype=y.dtype)
+    x=x/tf.cast(tf.reduce_max(tf.abs(x)),dtype=x.dtype)
     
     y=tf.math.abs(y)
     x=tf.math.abs(x)
@@ -175,7 +175,8 @@ def training_augmentation_flow(y,time_crop=None,central_crop=128,grid_size=[192,
 
     y = (y - tf.cast(tf.reduce_min(tf.abs(y)),dtype=y.dtype)) / (tf.cast(tf.reduce_max(tf.abs(y)),dtype=y.dtype) - tf.cast(tf.reduce_min(tf.abs(y)),dtype=y.dtype))
     x = (x - tf.cast(tf.reduce_min(tf.abs(x)),dtype=x.dtype)) / (tf.cast(tf.reduce_max(tf.abs(x)),dtype=x.dtype) - tf.cast(tf.reduce_min(tf.abs(x)),dtype=x.dtype))
-    
+    # print('max y',tf.reduce_max(tf.abs(y)), 'min y',tf.reduce_min(tf.abs(y)),'max x',tf.reduce_max(tf.abs(x)),'min x',tf.reduce_min(tf.abs(x)))
+
     y=tf.math.abs(y)
     x=tf.math.abs(x)
 
@@ -191,14 +192,14 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
 
         print('one_data',tf.shape(one_data))
         #Finding how many we need to repeat matrix by
-        one_dat_dims = tf.shape(one_data) #(15:25,192,192)
-        one_dat_frames = tf.cast(one_dat_dims[0],tf.int32) #(15:25)
-        num_reps_number = tf.cast(((4*time_crop)/one_dat_frames),tf.int32) #6:11
+        one_dat_dims = tf.shape(one_data) #(30:70,192,192)
+        one_dat_frames = tf.cast(one_dat_dims[0],tf.int32) #(30:70)
+        num_reps_number = tf.cast(((4*time_crop)/one_dat_frames),tf.int32) #2:4
         print('num_reps_number',num_reps_number)
 
         #tiling out the matrix
-        to_tile = [1*(num_reps_number),1,1] #[6:11,1,1]
-        rep_normed_grid_dat_2  = tf.tile(one_data,to_tile) # approx (160,192,192)
+        to_tile = [1*(num_reps_number),1,1] #[2:4,1,1]
+        rep_normed_grid_dat_2  = tf.tile(one_data,to_tile) # approx (120,192,192). Can be (108:120,192,192)
         print('rep_normed_grid_dat_2',tf.shape(rep_normed_grid_dat_2))
         del one_data
 
@@ -228,6 +229,7 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
 
         del one_data
 
+        #normed_grid_dat = grid_dat/tf.math.reduce_max(grid_dat) #normalize
         normed_grid_dat = (grid_dat - tf.math.reduce_min(grid_dat)) / (tf.math.reduce_max(grid_dat) - tf.math.reduce_min(grid_dat)) #normalize
 
         #num_reps_number = ((3*time_crop)//N) #3:8.  3 seems like a good number as it gets range correct in time, not huge data but not too small
@@ -255,7 +257,7 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     return time_crop_rand_start
 
 ####################
-"""
+
 #Quick Test
 import h5py
 import numpy as np
@@ -265,8 +267,8 @@ sys.path.insert(0, '/sf_ML_work/read_DICOMS/')
 import PlotUtils
 import time
 
-#fdata = '/host/data/SAX/Royal_Free/RF_full_set_var_temp_len/'
-fdata = '/host/data/SAX/yonly/GOSH_var_temp_len/GOSH_full_set_var_temp_len/'
+fdata = '/home/david/shared/read_DICOMS/data/GOSH_SAX_data/GOSH_full_set_var_temp_len/'
+#fdata = '/host/data/SAX/yonly/GOSH_var_temp_len/GOSH_full_set_var_temp_len/'
 
 dataplot='val_00002'
 filename=fdata + dataplot + '.h5'
@@ -278,13 +280,13 @@ time_crop = 40
 
 start=time.time()
 
-x,y=wrapper_augment(image,image,gpu=0,time_crop=time_crop,augment=0)
+x,y=wrapper_augment(image,image,gpu=0,time_crop=time_crop,augment=1)
 duration=time.time()-start
 print('duration',duration)
 
 x_np = tf.make_ndarray(tf.make_tensor_proto(x))
 y_np = tf.make_ndarray(tf.make_tensor_proto(y))
-sio.savemat('GOSH_full_set_var_temp_len_val1x_and_y_without_aug.mat',{'y':y_np,'x':x_np})
+#sio.savemat('GOSH_full_set_var_temp_len_val1x_and_y_without_aug.mat',{'y':y_np,'x':x_np})
 
 imgx=np.concatenate((x,y),axis=1)
 PlotUtils.plotVid(imgx,axis=0,vmax=1)
@@ -308,7 +310,7 @@ PlotUtils.plotVid(imgx,axis=0,vmax=1)
 # #print(np_vector)
 # if np_vector2.any():
 #     print('here2!')
-"""
+
 
 
 
