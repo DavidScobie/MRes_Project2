@@ -5,19 +5,14 @@ Created on Mon Aug 16 10:36:21 2021
 Data augmentation function for David 
 @author: oj20
 """
-import sys
 import tensorflow as tf
 import tensorflow_addons as tfa
 import math
-import time
 import tensorflow_nufft as tfft
-from scipy.interpolate import interpn
-import pdb
 import h5py
 import tensorflow_mri as tfmr
 import numpy as np
 import tensorflow_probability as tfp
-import matplotlib.pyplot as plt
 import scipy.io as sio
 
 def choose_params():
@@ -28,21 +23,18 @@ def choose_params():
     ex = np.random.uniform(low=0.0, high=0.15, size=None)
   else:
     #at exercise we want augmentation at the upper end of the scale
-    ex = np.random.uniform(low=0.6, high=1.0, size=None)
+    ex = np.random.uniform(low=0.5, high=1.0, size=None)
 
-  ex=0.5
+  #ex=0.5
+  print('ex',ex)
   accel = (1.5*ex)+1
   min_motion = max_motion = (6*ex)+0 #6 pixels is max motion
   resp_freq = (1*ex)+0.25
   
-  # return accel
   return accel, min_motion, max_motion, resp_freq
 
 
-def wrapper_augment(imagex,imagey,
-                    gpu=1,time_crop=None,
-                    central_crop=192, grid_size=[192,192],augment=1
-                    ):
+def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
   
   if augment == 1:
     accel, min_motion, max_motion, resp_freq = choose_params()
@@ -63,19 +55,19 @@ def wrapper_augment(imagex,imagey,
   if gpu==1:
       with tf.device('/gpu:0'):
           if augment==1:
-            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,min_motion_ampli=min_motion,max_motion_ampli=max_motion,resp_freq=resp_freq)
+            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,min_motion_ampli=min_motion,max_motion_ampli=max_motion,resp_freq=resp_freq)
           else:
-              x, y = training_augmentation_flow(imagey,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size)
+              x, y = training_augmentation_flow(imagey)
   else:
       if augment==1:
-            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size,min_motion_ampli=min_motion,max_motion_ampli=max_motion,resp_freq=resp_freq)
+            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,min_motion_ampli=min_motion,max_motion_ampli=max_motion,resp_freq=resp_freq)
       else:
-              x, y = training_augmentation_flow(imagey,time_crop=time_crop,central_crop=central_crop,grid_size=grid_size)
+              x, y = training_augmentation_flow(imagey)
 
   return x, y
 
 
-def training_augmentation_flow_withmotion(y,time_crop=None,central_crop=128,grid_size=[192,192],min_motion_ampli=0,max_motion_ampli=0,resp_freq=1):
+def training_augmentation_flow_withmotion(y,time_crop=None,min_motion_ampli=0,max_motion_ampli=0,resp_freq=1):
 
     ##################################################### The translation part
 
@@ -85,11 +77,11 @@ def training_augmentation_flow_withmotion(y,time_crop=None,central_crop=128,grid
     for idxdisp in range(time_crop): #40
         if idxdisp%40==0:               
             transform = motion_ampli
-        sin_point = 20*tf.cast(transform,tf.float32)*tf.math.sin((idxdisp/(time_crop/resp_freq))*2*tf.constant(math.pi))
+        sin_point = 20*tf.cast(transform,tf.float32)*tf.math.sin((idxdisp/(time_crop/resp_freq))*2*tf.constant(math.pi)) #sinusoidal translation
         if idxdisp==0:
-            displacement.append(tf.cast([[[0]],[[0]]],tf.float32)) #HERE IT IS shape (2,1)
+            displacement.append(tf.cast([[[0]],[[0]]],tf.float32)) #defining the first value in the translation
 
-        displacement.append(tf.cast([[sin_point],[sin_point]],tf.float32)) #IT FAILS HERE
+        displacement.append(tf.cast([[sin_point],[sin_point]],tf.float32))
 
     displacement=tf.stack(displacement) #shape(20,2,1) values from 0 to -20.
     transform=tf.squeeze(displacement) #shape(20,2) values from 0 to -20
@@ -112,12 +104,12 @@ def training_augmentation_flow_withmotion(y,time_crop=None,central_crop=128,grid
     
     x=tf.squeeze(x) #make it acceptable for tfft.nufft   (40,192,192)
 
-    traj = tfmr.radial_trajectory(192, views=13, phases=40, ordering='tiny', angle_range='full', readout_os=2.0) #(40, 13, 384, 2) 
+    traj = tfmr.radial_trajectory(192, views=13, phases=40, ordering='tiny_half', angle_range='full', readout_os=2.0) #(40, 13, 384, 2) 
     traj = tf.reshape(traj, [traj.shape[0], traj.shape[1]*traj.shape[2] , traj.shape[3]]) #(40, 4992,2)
     kspace = tfft.nufft(tf.cast(x,tf.complex64), traj,transform_type='type_2', fft_direction='forward') #(40,4992)
     kspace = tf.reshape(kspace, [1 , -1]) #(1,199680)    
 
-    radial_weights = tfmr.radial_density(192, views=13, phases=40, ordering='tiny', angle_range='full', readout_os=2.0) #(40,13,384)
+    radial_weights = tfmr.radial_density(192, views=13, phases=40, ordering='tiny_half', angle_range='full', readout_os=2.0) #(40,13,384)
     radial_weights = tf.reshape(radial_weights,[traj.shape[0], traj.shape[1]]) #(40,4992)
     radial_weights = tf.reshape(radial_weights, [1 , -1]) #(1,199680)
 
@@ -143,7 +135,7 @@ def training_augmentation_flow_withmotion(y,time_crop=None,central_crop=128,grid
     return x,y
 
 
-def training_augmentation_flow(y,time_crop=None,central_crop=128,grid_size=[192,192]):
+def training_augmentation_flow(y):
     #gridding onto undersampled radial trajectory
     
     x = y #(40,192,192,1)
@@ -151,17 +143,23 @@ def training_augmentation_flow(y,time_crop=None,central_crop=128,grid_size=[192,
     x=tf.squeeze(x) #make it acceptable for tfft.nufft   (40,192,192)
     #tf.print('x',tf.shape(x))
 
-    traj = tfmr.radial_trajectory(192, views=13, phases=40, ordering='tiny', angle_range='full', readout_os=2.0) #(40, 13, 384, 2) 
+    traj = tfmr.radial_trajectory(192, views=13, phases=40, ordering='tiny_half', angle_range='full', readout_os=2.0) #(40, 13, 384, 2) 
+    #traj_np = tf.make_ndarray(tf.make_tensor_proto(traj))
+    #sio.savemat('traj_tiny_half.mat',{'traj_tiny_half':traj_np})
+
     traj = tf.reshape(traj, [traj.shape[0], traj.shape[1]*traj.shape[2] , traj.shape[3]]) #(40, 4992,2)
     print('traj',tf.shape(traj))
     kspace = tfft.nufft(tf.cast(x,tf.complex64), traj,transform_type='type_2', fft_direction='forward') #(40,4992)
     kspace = tf.reshape(kspace, [1 , -1]) #(1,199680)    
+    print('kspace imag max',tf.math.reduce_max(tf.math.imag(kspace)),'kspace real max',tf.math.reduce_max(tf.math.real(kspace)))
 
-    radial_weights = tfmr.radial_density(192, views=13, phases=40, ordering='tiny', angle_range='full', readout_os=2.0) #(40,13,384)
+    radial_weights = tfmr.radial_density(192, views=13, phases=40, ordering='tiny_half', angle_range='full', readout_os=2.0) #(40,13,384)
     radial_weights = tf.reshape(radial_weights,[traj.shape[0], traj.shape[1]]) #(40,4992)
     radial_weights = tf.reshape(radial_weights, [1 , -1]) #(1,199680)
 
     dcw_kspace = kspace / tf.cast(radial_weights,dtype=tf.complex64) #(1,199680)  
+    # print('dcw_kspace',tf.squeeze(dcw_kspace[0][0:5]))
+
     del kspace
     del radial_weights
     dcw_kspace = tf.reshape(dcw_kspace, [40 , 4992])  
@@ -204,6 +202,7 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
 
         #choosing random starting frame
         rand_start_frame = tf.experimental.numpy.random.randint(0,high = time_crop - 1) #0 to 39 some number
+        #rand_start_frame = 0
         time_crop_rand_start = rep_normed_grid_dat_2[rand_start_frame:rand_start_frame + time_crop, :, :] # (40,192,192)
     else:
         print('augmentation is happening')
@@ -211,6 +210,7 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
         
         one_data_dims = tf.shape(one_data) #(192,192,n)
 
+        #defining values for interpolation
         nFrames_int32 = tf.cast(one_data_dims[2],tf.int32) #n
         matrix = tf.cast(one_data_dims[0],tf.int32) #192
         x = y = x1 = y1 = tf.linspace(0,matrix-1,matrix) #[0,1,2,...,190,191]
@@ -230,7 +230,6 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
 
         normed_grid_dat = (grid_dat - tf.math.reduce_min(grid_dat)) / (tf.math.reduce_max(grid_dat) - tf.math.reduce_min(grid_dat)) #normalize
 
-        #num_reps_number = ((3*time_crop)//N) #3:8.  3 seems like a good number as it gets range correct in time, not huge data but not too small
         grid_dat_shape = tf.shape(grid_dat) #(192,192,6:35)
         grid_dat_frames = tf.cast(grid_dat_shape[2],tf.int32) #6:35
         num_reps_number = tf.cast(((3*time_crop)/grid_dat_frames),tf.int32) #3:20
@@ -255,20 +254,18 @@ def interpolate_in_time(one_data, accel = 1, time_crop=None):
     return time_crop_rand_start
 
 ####################
-"""
+
 #Quick Test
 import h5py
-import numpy as np
-
-sys.path.insert(0, '/sf_ML_work/read_DICOMS/')
-
-import PlotUtils
 import time
+import PlotUtils
+import matplotlib.pyplot as plt
 
 #fdata = '/host/data/SAX/Royal_Free/RF_full_set_var_temp_len/'
-fdata = '/host/data/SAX/yonly/GOSH_var_temp_len/GOSH_full_set_var_temp_len/'
+#fdata = '/host/data/SAX/yonly/GOSH_var_temp_len/GOSH_full_set_var_temp_len/'
+fdata = '/home/david/shared/read_DICOMS/data/GOSH_SAX_data/GOSH_full_set_var_temp_len/'
 
-dataplot='val_00002'
+dataplot='val_00001'
 filename=fdata + dataplot + '.h5'
 
 ori= h5py.File(filename, 'r')
@@ -278,13 +275,13 @@ time_crop = 40
 
 start=time.time()
 
-x,y=wrapper_augment(image,image,gpu=0,time_crop=time_crop,augment=0)
+x,y=wrapper_augment(image,image,gpu=0,time_crop=time_crop,augment=1)
 duration=time.time()-start
 print('duration',duration)
 
 x_np = tf.make_ndarray(tf.make_tensor_proto(x))
 y_np = tf.make_ndarray(tf.make_tensor_proto(y))
-sio.savemat('GOSH_full_set_var_temp_len_val1x_and_y_without_aug.mat',{'y':y_np,'x':x_np})
+#sio.savemat('GOSH_full_set_var_temp_len_val1x_and_y_without_aug2_dias_start_tiny_half_dens_as_well.mat',{'y':y_np,'x':x_np})
 
 imgx=np.concatenate((x,y),axis=1)
 PlotUtils.plotVid(imgx,axis=0,vmax=1)
@@ -308,7 +305,7 @@ PlotUtils.plotVid(imgx,axis=0,vmax=1)
 # #print(np_vector)
 # if np_vector2.any():
 #     print('here2!')
-"""
+
 
 
 
