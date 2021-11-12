@@ -25,12 +25,12 @@ def choose_params():
     #at exercise we want augmentation at the upper end of the scale
     ex = np.random.uniform(low=0.5, high=1.0, size=None)
 
-  ex=0 #REMOVE THIS AFTER
+  #ex=1 #REMOVE THIS AFTER
   print('ex',ex)
 
-  accel = (1.5*ex)+1
-  trans_motion_ampli = (6*ex)+0 #6 pixels is max motion
-  resp_freq = (1*ex)+0.25
+  accel = (1.5*ex)+1 #up to 2.5x rest rate
+  trans_motion_ampli = (6*ex)+0 #6 pixels is max motion. spatial res = 1.67mm
+  resp_freq = (1*ex)+0.25 #10-15 breaths/min up to 40-50 breaths/min. A scan is 1.5 seconds. Temp res = 36.4ms
   
   return accel, trans_motion_ampli, resp_freq
 
@@ -51,16 +51,16 @@ def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
       with tf.device('/gpu:0'):
           if augment==1:
             imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq)
+            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
           else:
-            imagey = interpolate_in_time_no_RHR(imagey, accel = accel, time_crop=time_crop)
+            imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
   else:
       if augment==1:
             imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq)
+            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
       else:
-            imagey = interpolate_in_time_no_RHR(imagey, accel = accel, time_crop=time_crop)
+            imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
 
   return x, y
@@ -72,13 +72,11 @@ def training_augmentation_flow_withmotion(y,time_crop=None,trans_motion_ampli=0,
 
     print('trans_motion_ampli',trans_motion_ampli)
 
-    #motion_ampli = tf.random.uniform([1],minval=min_motion_ampli,maxval=max_motion_ampli,dtype=tf.dtypes.float32,seed=None,name=None)/(time_crop/2) #random motion amplitude inbetween specified limits
-
     displacement=[]
     for idxdisp in range(time_crop): #40
         if idxdisp%40==0:               
             transform = trans_motion_ampli
-        sin_point = 20*tf.cast(transform,tf.float32)*tf.math.sin((idxdisp/(time_crop/resp_freq))*2*tf.constant(math.pi)) #sinusoidal translation. 20 factor gives us max of 1cm translation at peak exercise
+        sin_point = tf.cast(transform,tf.float32)*tf.math.sin((idxdisp/(time_crop/resp_freq))*2*tf.constant(math.pi)) #sinusoidal translation. max of 1cm translation at peak exercise
         if idxdisp==0:
             displacement.append(tf.cast([[[0]],[[0]]],tf.float32)) #defining the first value in the translation
 
@@ -88,7 +86,7 @@ def training_augmentation_flow_withmotion(y,time_crop=None,trans_motion_ampli=0,
     transform=tf.squeeze(displacement) #shape(20,2) values from 0 to -20
     del displacement
     transform = transform[:,0]
-
+    
     Zeros = tf.zeros((tf.shape(transform)[0]))
     transform = tf.expand_dims(transform,1)
     Zeros = tf.expand_dims(Zeros,1)
@@ -99,10 +97,10 @@ def training_augmentation_flow_withmotion(y,time_crop=None,trans_motion_ampli=0,
 
     y=tfa.image.translate(y,tf.cast(transform[:-1,:],tf.float32),'bilinear' ) #image:y. transaltion:transform. interpolation mode: bilinear
     del transform
- 
-    x = y #(40,192,192,1)
 
     #####################################Gridding onto undersampled radial trajectory
+
+    x = y #(40,192,192,1)
     
     x=tf.squeeze(x) #make it acceptable for tfft.nufft   (40,192,192)
 
@@ -176,7 +174,7 @@ def training_augmentation_flow(y):
     return x,y
 
 
-def interpolate_in_time_no_RHR(one_data, accel = 1, time_crop=None):
+def interpolate_in_time_no_RHR(one_data, time_crop=None):
     #Taking variable frame number data. Tiling to many frames and picking a window of 40 frames at random start point.
 
     print('augmentation not happening')
@@ -249,6 +247,7 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
 
     #giving data a random starting frame
     rand_start_frame = tf.experimental.numpy.random.randint(0,high = time_crop - 1) #0:39
+    #rand_start_frame = 0
     time_crop_rand_start = rep_normed_grid_dat[rand_start_frame:rand_start_frame + time_crop, :, :] #[40,192,192]
     del rep_normed_grid_dat
     print('time_crop_rand_start shape',tf.shape(time_crop_rand_start))
@@ -256,7 +255,7 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     return time_crop_rand_start
 
 ####################
-
+"""
 #Quick Test
 import h5py
 import time
@@ -283,30 +282,11 @@ print('duration',duration)
 
 x_np = tf.make_ndarray(tf.make_tensor_proto(x))
 y_np = tf.make_ndarray(tf.make_tensor_proto(y))
-#sio.savemat('GOSH_full_set_var_temp_len_val1x_and_y_without_aug2_dias_start_tiny_half_dens_as_well.mat',{'y':y_np,'x':x_np})
+#sio.savemat('GOSH_full_set_var_temp_len_val1x_and_y_RHR_aug_only_ex0.mat',{'y':y_np,'x':x_np})
 print('x',tf.shape(x),'y',tf.shape(y))
 imgx=np.concatenate((x,y),axis=1)
 PlotUtils.plotVid(imgx,axis=0,vmax=1)
-
-#check if nans in the data
-
-# vector = tf.math.is_nan(x)
-# #print(vector)
-# print(np.max(vector))
-
-# np_vector = vector.numpy()
-# #print(np_vector)
-# if np_vector.any():
-#     print('here!')
-
-# vector2 = tf.math.is_nan(y)
-# #print(vector)
-# print(np.max(vector2))
-
-# np_vector2 = vector2.numpy()
-# #print(np_vector)
-# if np_vector2.any():
-#     print('here2!')
+"""
 
 
 
