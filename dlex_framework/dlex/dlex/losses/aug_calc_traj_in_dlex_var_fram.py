@@ -23,12 +23,12 @@ def choose_params():
     ex = np.random.uniform(low=0.0, high=0.15, size=None)
   else:
     #at exercise we want augmentation at the upper end of the scale
-    ex = np.random.uniform(low=0.5, high=1.0, size=None)
+    ex = np.random.uniform(low=0.6, high=1.0, size=None)
 
-  #ex=1 #REMOVE THIS AFTER
+  #ex=0.1 #REMOVE THIS AFTER
   print('ex',ex)
 
-  accel = (1.5*ex)+1 #up to 2.5x rest rate
+  accel = (1*ex)+1 #up to 2x rest rate
   trans_motion_ampli = (6*ex)+0 #6 pixels is max motion. spatial res = 1.67mm
   resp_freq = (1*ex)+0.25 #10-15 breaths/min up to 40-50 breaths/min. A scan is 1.5 seconds. Temp res = 36.4ms
   
@@ -51,14 +51,16 @@ def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
       with tf.device('/gpu:0'):
           if augment==1:
             imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            #x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            x, y = training_augmentation_flow(imagey)
           else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
   else:
       if augment==1:
             imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            #x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            x, y = training_augmentation_flow(imagey)
       else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
@@ -255,7 +257,7 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     return time_crop_rand_start
 
 ####################
-"""
+
 #Quick Test
 import h5py
 import time
@@ -282,11 +284,11 @@ print('duration',duration)
 
 x_np = tf.make_ndarray(tf.make_tensor_proto(x))
 y_np = tf.make_ndarray(tf.make_tensor_proto(y))
-#sio.savemat('GOSH_full_set_var_temp_len_val1x_and_y_RHR_aug_only_ex0.mat',{'y':y_np,'x':x_np})
+#sio.savemat('GOSH_full_set_var_temp_len_val1x_and_y_RHR_aug_only_ex0p1.mat',{'y':y_np,'x':x_np})
 print('x',tf.shape(x),'y',tf.shape(y))
 imgx=np.concatenate((x,y),axis=1)
 PlotUtils.plotVid(imgx,axis=0,vmax=1)
-"""
+
 
 
 

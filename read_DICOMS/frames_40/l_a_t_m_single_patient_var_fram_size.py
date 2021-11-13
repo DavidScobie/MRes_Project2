@@ -20,7 +20,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 #fdata = 'C:\PHD\MRes_project\ML_work\read_DICOMS\data\Royal_Free_SAX_data\RF_full_set_var_temp_len_y_and_x_after_aug'
 
 #patient_code = 'RF_full_set_var_temp_len_val1x_and_y_without_aug'
-patient_code = 'GOSH_full_set_var_temp_len_val1x_and_y_RHR_aug_only_ex0'
+patient_code = 'GOSH_full_set_var_temp_len_val1x_and_y_RHR_aug_only_ex0p1'
 
 #full_filepath = os.path.join("C:/PHD/MRes_project/ML_work/read_DICOMS/data/Royal_Free_SAX_data/RF_full_set_var_temp_len_val_a_few/non_aug/",patient_code)
 full_filepath = os.path.join("C:/PHD/MRes_project/ML_work/read_DICOMS/frames_40/dlex_augment/GOSH_non_aug_var_fram_size_RHR_only/",patient_code)
@@ -57,4 +57,4 @@ PlotUtils.plotVid(img,vmin=0,vmax=1,axis=0)
 # PlotUtils.plotVid(ypred_np,vmin=0,vmax=1,axis=0)
 
 #sio.savemat('Royal_Free_aug_trans_var_ex_rate_var_fram_size_without_augment_59epo_RF_full_set_var_temp_len_without_aug_val1x_y_ypred.mat',{'x':x_np, 'y':y_np, 'y_pred':ypred_np}) #you can save as many arrays as you want
-sio.savemat('GOSH_non_aug_var_fram_size_RHR_only_GOSH_full_set_var_temp_len_val1x_and_y_RHR_aug_only_ex0.mat',{'x':x_np, 'y':y_np, 'y_pred':ypred_np}) #you can save as many arrays as you want
+sio.savemat('GOSH_non_aug_var_fram_size_RHR_only_GOSH_full_set_var_temp_len_val1x_and_y_RHR_aug_only_ex0p1.mat',{'x':x_np, 'y':y_np, 'y_pred':ypred_np}) #you can save as many arrays as you want
