@@ -21,21 +21,43 @@ def choose_params():
   if decide == 0:
     #at rest want a bit of aug to simulate respiratory motion
     ex = np.random.uniform(low=0.0, high=0.15, size=None)
+    accel = (1*ex)+1 #up to 2x rest rate
   else:
     #at exercise we want augmentation at the upper end of the scale
     ex = np.random.uniform(low=0.6, high=1.0, size=None)
+    accel = np.random.normal(2,0.5)
 
-  #ex=0.1 #REMOVE THIS AFTER
+  #ex=1 #REMOVE THIS AFTER
   print('ex',ex)
 
-  accel = (1*ex)+1 #up to 2x rest rate
   trans_motion_ampli = (6*ex)+0 #6 pixels is max motion. spatial res = 1.67mm
   resp_freq = (1*ex)+0.25 #10-15 breaths/min up to 40-50 breaths/min. A scan is 1.5 seconds. Temp res = 36.4ms
+
+  #MATLAB translation values
+  ex_MAT_trans = np.random.uniform(low=0, high=1.0, size=None)
+  ex_MAT_resp = np.random.uniform(low=0, high=1.0, size=None)
+  trans_motion_ampli = (4*ex_MAT_trans)+1
+  resp_freq = (2*ex_MAT_resp)+1
+  print('trans_motion_ampli',trans_motion_ampli,'resp_freq',resp_freq,'ex_MAT_trans',ex_MAT_trans,'ex_MAT_resp',ex_MAT_resp)
   
   return accel, trans_motion_ampli, resp_freq
 
+def memory():
+    import os
+    import psutil
+    pid = os.getpid()
+    py = psutil.Process(pid)
+    memoryUse = py.memory_info()[0]/2.**30  # memory use in GB...I think
+    tf.print('memory use:', memoryUse, "vms: ", py.memory_info().vms, "rss:", py.memory_info().rss)
+
+def wrapper_augment2(imagex,imagey,gpu=1,time_crop=None,augment=1):
+  memory()
+  return imagex,imagey
+
 
 def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
+
+  memory()
   
   if augment == 1:
     accel, trans_motion_ampli, resp_freq = choose_params()
@@ -50,21 +72,27 @@ def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
   if gpu==1:
       with tf.device('/gpu:0'):
           if augment==1:
-            imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-            #x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
-            x, y = training_augmentation_flow(imagey)
+            imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
+            #imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
+            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            #x, y = training_augmentation_flow(imagey)
           else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
   else:
       if augment==1:
-            imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-            #x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
-            x, y = training_augmentation_flow(imagey)
+            imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
+            #imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
+            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            #x, y = training_augmentation_flow(imagey)
       else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
 
+  tf.debugging.check_numerics(x, message='Checking x') #throws an error if x contains a NaN or inf value
+  tf.debugging.check_numerics(y, message='Checking y')
+
+  tf.debugging.enable_check_numerics() #check for inf or NaN anywhere in dlex
   return x, y
 
 
@@ -257,7 +285,7 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     return time_crop_rand_start
 
 ####################
-
+"""
 #Quick Test
 import h5py
 import time
@@ -288,9 +316,4 @@ y_np = tf.make_ndarray(tf.make_tensor_proto(y))
 print('x',tf.shape(x),'y',tf.shape(y))
 imgx=np.concatenate((x,y),axis=1)
 PlotUtils.plotVid(imgx,axis=0,vmax=1)
-
-
-
-
-
-
+"""
