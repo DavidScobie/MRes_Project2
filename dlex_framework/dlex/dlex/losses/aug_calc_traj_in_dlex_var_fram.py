@@ -22,27 +22,26 @@ def choose_params():
     #at rest want a bit of aug to simulate respiratory motion
     ex = np.random.uniform(low=0.0, high=0.15, size=None)
     accel = (1*ex)+1 #up to 2x rest rate
+    trans_motion_ampli = 1
+    resp_freq = 1
   else:
     #at exercise we want augmentation at the upper end of the scale
-    ex = np.random.uniform(low=0.6, high=1.0, size=None)
+    ex = np.random.uniform(low=0.0, high=1.0, size=None)
     accel = np.random.normal(2,0.5)
 
+    # trans_motion_ampli = (6*ex)+0 #6 pixels is max motion. spatial res = 1.67mm
+    # resp_freq = (1*ex)+0.25 #10-15 breaths/min up to 40-50 breaths/min. A scan is 1.5 seconds. Temp res = 36.4ms
+  
+    trans_motion_ampli = (2*ex)+1 #reduce the translation amplitude in line with findings from prospective data
+    resp_freq = (2*ex)+1
+  
+  print('trans_motion_ampli',trans_motion_ampli,'resp_freq',resp_freq)
   #ex=1 #REMOVE THIS AFTER
   print('ex',ex)
 
-  trans_motion_ampli = (6*ex)+0 #6 pixels is max motion. spatial res = 1.67mm
-  resp_freq = (1*ex)+0.25 #10-15 breaths/min up to 40-50 breaths/min. A scan is 1.5 seconds. Temp res = 36.4ms
-
-  #MATLAB translation values
-  ex_MAT_trans = np.random.uniform(low=0, high=1.0, size=None)
-  ex_MAT_resp = np.random.uniform(low=0, high=1.0, size=None)
-  trans_motion_ampli = (4*ex_MAT_trans)+1
-  resp_freq = (2*ex_MAT_resp)+1
-  print('trans_motion_ampli',trans_motion_ampli,'resp_freq',resp_freq,'ex_MAT_trans',ex_MAT_trans,'ex_MAT_resp',ex_MAT_resp)
-  
   return accel, trans_motion_ampli, resp_freq
 
-def memory():
+def memory(): #This shows memory on the CPU which is not very helpful as we use the GPU
     import os
     import psutil
     pid = os.getpid()
@@ -56,8 +55,6 @@ def wrapper_augment2(imagex,imagey,gpu=1,time_crop=None,augment=1):
 
 
 def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
-
-  memory()
   
   if augment == 1:
     accel, trans_motion_ampli, resp_freq = choose_params()
@@ -93,6 +90,13 @@ def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
   tf.debugging.check_numerics(y, message='Checking y')
 
   tf.debugging.enable_check_numerics() #check for inf or NaN anywhere in dlex
+
+  gpu_devices = tf.config.list_physical_devices('GPU') #Finds if we are using a GPU or not
+  if gpu_devices:
+    print('GPU device name',tf.config.list_physical_devices('GPU')) #see the name of the GPU device
+    tf.config.experimental.set_memory_growth #we need the memory to grow because otherwise it is all allocated to the GPU
+    tf.print('memory info',tf.config.experimental.get_memory_info('GPU:0')['current']) #get the memory on the specified GPU
+
   return x, y
 
 
@@ -312,7 +316,7 @@ print('duration',duration)
 
 x_np = tf.make_ndarray(tf.make_tensor_proto(x))
 y_np = tf.make_ndarray(tf.make_tensor_proto(y))
-#sio.savemat('GOSH_full_set_var_temp_len_val1x_and_y_RHR_aug_only_ex0p1.mat',{'y':y_np,'x':x_np})
+#sio.savemat('GOSH_full_set_var_temp_len_val1x_and_y_trans_aug_only_ex1.mat',{'y':y_np,'x':x_np})
 print('x',tf.shape(x),'y',tf.shape(y))
 imgx=np.concatenate((x,y),axis=1)
 PlotUtils.plotVid(imgx,axis=0,vmax=1)

@@ -15,7 +15,8 @@ import tensorflow_nufft as tfft
 import tensorflow as tf
 import math
 
-contents = sio.loadmat('/media/sf_ML_work/BART/meas_MID00576_FID48987_ex3_SAX_raw_and_ang.mat') #CHANGE
+contents = sio.loadmat('/home/david/shared/BART/data/meas_ex3_stack/raw_and_ang/meas_MID00576_FID48987_ex3_SAX_raw_and_ang.mat') #CHANGE
+#contents = sio.loadmat('/media/sf_ML_work/BART/meas_MID00576_FID48987_ex3_SAX_raw_and_ang.mat') #CHANGE
 raw_data = contents['raw_data'] #shape (384, 13, 40, 26, 12)
 raw_data_shape = np.shape(raw_data)
 
@@ -62,7 +63,7 @@ coil_corr = np.zeros((noSlices,nCoils,nPhases,matrix,matrix),dtype = 'complex_')
 for sl in range(noSlices) : #range 12
     sl = sl+starting_slice 
     print('sl',sl)
-    sliceData = raw_data[:,:,:,:,sl] #[384, 13, 40, 26, 12] , why do we have the 13 in here? 
+    sliceData = raw_data[:,:,:,:,sl] #[384, 13, 40, 26, 12] 
 
     dataCoilSensitivities = np.zeros((matrix*2, accSpokes*nPhases, 1, nCoils), dtype=complex) #(384,520,1,26) each of the k space points has its own sensitivity!
     trajScale = np.zeros((dimensions, matrix*2, accSpokes*nPhases)) #(3,384,520)
@@ -72,31 +73,32 @@ for sl in range(noSlices) : #range 12
         # we are just reshaping here effectively
         trajScale[:,:,ph*accSpokes:(ph+1)*accSpokes] = trajectory[:,:,:, ph] #saving the trajectory of each slice as 3D matrix instead of 4D
 
-    dataCS_3124 = np.transpose(dataCoilSensitivities, [2, 0, 1, 3]) #permute and save raw data as another variable before deletion
+    dataCS_3124 = np.transpose(dataCoilSensitivities, [2, 0, 1, 3]) #(1,384,520,26)
     del dataCoilSensitivities
     del ph
 
-    dataCS_perm = tf.transpose(dataCS_3124, perm=[3,0,1,2])
+    dataCS_perm = tf.transpose(dataCS_3124, perm=[3,0,1,2]) #(26,1,384,520)
     del dataCS_3124
-    dataCS_perm =  tf.reshape(dataCS_perm , [nCoils, -1])
+    dataCS_perm =  tf.reshape(dataCS_perm , [nCoils, -1]) #(26,384*520)
 
     #reshape the trajectory data
     trajSc = trajScale[0:2,:,:] #making it (2,384,520)
     del trajScale
-    trajSc= tf.transpose(trajSc, perm=[1,2,0])
-    #trajSc= tf.transpose(trajSc, perm=[2,1,0]) #this is wrong!
-    trajSc =  tf.reshape(trajSc , [-1 , 2])
+    trajSc= tf.transpose(trajSc, perm=[1,2,0]) #(384,520,2)
+    
+    trajSc =  tf.reshape(trajSc , [-1 , 2]) #(384*520,2)
     trajSc = tf.expand_dims(trajSc,axis=0)
-    trajSc = tf.repeat(trajSc, repeats = 26, axis = 0)
+    trajSc = tf.repeat(trajSc, repeats = 26, axis = 0) #(26,384*520,2) traj same for each coil
 
     #scale from -pi to pi
     trajSc = (trajSc / 192) *2*np.pi
 
     #calculate weights
-    weights = tfmr.estimate_density(trajSc, (192,192))
+    weights = tfmr.estimate_density(trajSc, (192,192)) #dcw weights
     dcw_dataCS_perm = dataCS_perm / tf.cast(weights,dtype=tf.complex128)
     del dataCS_perm
     del weights
+    print('')
     average_gridded_data = tfft.nufft(dcw_dataCS_perm , trajSc, transform_type='type_1', fft_direction='backward', grid_shape=(192,192))
     del dcw_dataCS_perm
     average_gridded_data= tf.transpose(average_gridded_data, perm=[1,2,0]) #big set
@@ -179,7 +181,7 @@ plt.imshow(abs(np.squeeze(sum_coil[0,38,:,:])))
 plt.figure(207)
 plt.imshow(abs(np.squeeze(sum_coil[1,14,:,:]))) 
 
-sio.savemat('meas_MID00573_FID48984_ex3_stack_sl_10_11.mat',{'img_data':sum_coil}) #CHANGE
+#sio.savemat('meas_MID00573_FID48984_ex3_stack_sl_10_11.mat',{'img_data':sum_coil}) #CHANGE
 plt.show()
 
 #         """   
