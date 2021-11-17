@@ -37,7 +37,8 @@ for i = 1:dims(1)
     s(i).x = abs(squeeze(normed_img(i,:,:,:)));
 end
 
-save_dir = 'C:/PHD/MRes_project/ML_work/BART/data/meas_ex1_stack/h5_slices';
+%save_dir = 'C:/PHD/MRes_project/ML_work/BART/data/meas_ex1_stack/h5_slices';
+save_dir = 'C:/PHD/MRes_project/ML_work/BART/data/frame_40_date_16_11_21_1_slice/h5_slice'
 dlexsave(save_dir, s, 'prefixes', 'd1');
 
 %%
