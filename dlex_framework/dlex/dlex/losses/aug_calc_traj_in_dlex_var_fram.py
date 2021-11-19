@@ -18,52 +18,30 @@ import scipy.io as sio
 def choose_params():
   #rest or aug?
   decide = np.random.randint(2) #a random integer of either 0 or 1
-  
   if decide == 0:
     #at rest want a bit of aug to simulate respiratory motion
-    ex = np.random.uniform(low=0.0, high=1, size=None)
-    accel = 1 
-    trans_motion_ampli = 1
-    resp_freq = 1
-    tf.print('no RHR')
+    ex = np.random.uniform(low=0.0, high=0.15, size=None)
   else:
     #at exercise we want augmentation at the upper end of the scale
-    ex = np.random.uniform(low=0.0, high=1.0, size=None)
-    accel = np.random.normal(2,0.5)
-    #accel = 1.5 + ex
+    ex = np.random.uniform(low=0.3, high=1.0, size=None)
 
-    #ex = 0.2 #REMOVE AFTER
-
-    # trans_motion_ampli = (6*ex)+0 #6 pixels is max motion. spatial res = 1.67mm
-    # resp_freq = (1*ex)+0.25 #10-15 breaths/min up to 40-50 breaths/min. A scan is 1.5 seconds. Temp res = 36.4ms
-  
-    trans_motion_ampli = (2*ex)+1 #reduce the translation amplitude in line with findings from prospective data
-    resp_freq = (2*ex)+1
-  
-  print('trans_motion_ampli',trans_motion_ampli,'resp_freq',resp_freq)
-  #ex=1 #REMOVE THIS AFTER
+  #ex=0.1 #REMOVE THIS AFTER
   print('ex',ex)
-  tf.print('accel',accel)
 
-  return accel, trans_motion_ampli, resp_freq, decide
+  #this is how accel was when it worked
+  #accel = np.random.normal(2,0.5)
+  accel = (1*ex)+1 #up to 2x rest rate
 
-def memory(): #This shows memory on the CPU which is not very helpful as we use the GPU
-    import os
-    import psutil
-    pid = os.getpid()
-    py = psutil.Process(pid)
-    memoryUse = py.memory_info()[0]/2.**30  # memory use in GB...I think
-    tf.print('memory use:', memoryUse, "vms: ", py.memory_info().vms, "rss:", py.memory_info().rss)
-
-def wrapper_augment2(imagex,imagey,gpu=1,time_crop=None,augment=1):
-  memory()
-  return imagex,imagey
+  trans_motion_ampli = (6*ex)+0 #6 pixels is max motion. spatial res = 1.67mm
+  resp_freq = (1*ex)+0.25 #10-15 breaths/min up to 40-50 breaths/min. A scan is 1.5 seconds. Temp res = 36.4ms
+  
+  return accel, trans_motion_ampli, resp_freq
 
 
 def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
   
   if augment == 1:
-    accel, trans_motion_ampli, resp_freq, decide = choose_params()
+    accel, trans_motion_ampli, resp_freq = choose_params()
     # accel = 2
     # min_motion = 3
     # max_motion = 3
@@ -75,36 +53,20 @@ def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
   if gpu==1:
       with tf.device('/gpu:0'):
           if augment==1:
-            if decide == 0:
-              imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
-            else:
-              imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
-            #x, y = training_augmentation_flow(imagey)
+            imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
+            #x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            x, y = training_augmentation_flow(imagey)
           else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
   else:
       if augment==1:
-        if decide == 0:
-            imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
-        else:
             imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-        x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            #x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            x, y = training_augmentation_flow(imagey)
       else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
-
-  tf.debugging.check_numerics(x, message='Checking x') #throws an error if x contains a NaN or inf value
-  tf.debugging.check_numerics(y, message='Checking y')
-
-  tf.debugging.enable_check_numerics() #check for inf or NaN anywhere in dlex
-
-  gpu_devices = tf.config.list_physical_devices('GPU') #Finds if we are using a GPU or not
-  if gpu_devices:
-    print('GPU device name',tf.config.list_physical_devices('GPU')) #see the name of the GPU device
-    tf.config.experimental.set_memory_growth #we need the memory to grow because otherwise it is all allocated to the GPU
-    #tf.print('memory info',tf.config.experimental.get_memory_info('GPU:0')['current']) #get the memory on the specified GPU
 
   return x, y
 
@@ -265,8 +227,6 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     x_ref_max = tf.cast(nFrames_int32-1,tf.float64) #n-1
     z1 = tf.linspace(0,nFrames_int32-1,num=N) #[0,...,n-1]  N points
 
-    tf.print('accel',accel,'z1',z1,'x_ref_max',x_ref_max,'one_data',tf.shape(one_data))
-
     grid_dat = tfp.math.interp_regular_1d_grid(tf.cast(z1,tf.float64), x_ref_min, x_ref_max, tf.cast(one_data,tf.float64), axis=-1) #(192,192,6:35) ish
 
     del one_data
@@ -300,7 +260,7 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     return time_crop_rand_start
 
 ####################
-
+"""
 #Quick Test
 import h5py
 import time
@@ -327,7 +287,8 @@ print('duration',duration)
 
 x_np = tf.make_ndarray(tf.make_tensor_proto(x))
 y_np = tf.make_ndarray(tf.make_tensor_proto(y))
-#sio.savemat('GOSH_full_set_var_temp_len_val1x_and_y_trans_aug_only_ex0p2_smaller_trans.mat',{'y':y_np,'x':x_np})
+#sio.savemat('GOSH_full_set_var_temp_len_val1x_and_y_RHR_aug_only_ex0p1.mat',{'y':y_np,'x':x_np})
 print('x',tf.shape(x),'y',tf.shape(y))
 imgx=np.concatenate((x,y),axis=1)
 PlotUtils.plotVid(imgx,axis=0,vmax=1)
+"""
