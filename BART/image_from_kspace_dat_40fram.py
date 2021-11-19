@@ -87,13 +87,26 @@ for sl in range(noSlices) :
     del dcw_dataCS_perm
     average_gridded_data= tf.transpose(average_gridded_data, perm=[1,2,0]) #big set
     print('average_gridded_data',np.shape(average_gridded_data))
+
+    plt.figure(0)
+    plt.imshow(abs(average_gridded_data[:,:,0])) 
     
     #ksp = tfmr.fftn(np.squeeze(average_gridded_data.numpy()), shape=(192,192,26), axes=[0,1], norm='backward', shift=True)
     ksp = tfmr.fftn(np.squeeze(average_gridded_data.numpy()), axes=[0,1], norm='backward', shift=True)
     print('ksp',np.shape(ksp))
+
+    plt.figure(1)
+    plt.imshow(abs(ksp[:,:,0])) 
+
     #del average_gridded_data
     coil_sensitivities = tfmr.estimate_coil_sensitivities(average_gridded_data, method='walsh')
+    #coil_sensitivities = tfmr.estimate_coil_sensitivities(average_gridded_data, method='espirit',num_maps=1) #This is incorrect. Input data may need to be kspace?
     del ksp
+
+    plt.figure(2)
+    plt.imshow(abs(coil_sensitivities[:,:,0])) 
+
+    plt.show()
 
     print('coil_sensitivities',tf.shape(coil_sensitivities))
     # fig, ax = plt.subplots(nrows=1,ncols=4, figsize=(10,10))
@@ -187,7 +200,7 @@ plt.imshow(abs(np.squeeze(sum_coil[0,0,:,:])))
 plt.figure(207)
 plt.imshow(abs(np.squeeze(sum_coil[0,14,:,:]))) 
 
-sio.savemat('frame_40_1_slice_radial_2DSAX_THISoNE_7TH.mat',{'img_data':sum_coil}) #CHANGE
+#sio.savemat('frame_40_1_slice_radial_2DSAX_THISoNE_7TH.mat',{'img_data':sum_coil}) #CHANGE
 plt.show()
 
 #         """   
