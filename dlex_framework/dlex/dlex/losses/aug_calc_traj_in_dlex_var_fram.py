@@ -21,16 +21,18 @@ def choose_params():
   if decide == 0:
     #at rest want a bit of aug to simulate respiratory motion
     ex = np.random.uniform(low=0.0, high=0.15, size=None)
+    accel = (1*ex)+1 #up to 2x rest rate
   else:
     #at exercise we want augmentation at the upper end of the scale
     ex = np.random.uniform(low=0.3, high=1.0, size=None)
+    accel = np.random.normal(2,0.5)
 
   #ex=0.1 #REMOVE THIS AFTER
   print('ex',ex)
 
   #this is how accel was when it worked
   #accel = np.random.normal(2,0.5)
-  accel = (1*ex)+1 #up to 2x rest rate
+  #accel = (1*ex)+1 #up to 2x rest rate
 
   trans_motion_ampli = (6*ex)+0 #6 pixels is max motion. spatial res = 1.67mm
   resp_freq = (1*ex)+0.25 #10-15 breaths/min up to 40-50 breaths/min. A scan is 1.5 seconds. Temp res = 36.4ms
@@ -67,6 +69,9 @@ def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
       else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
+
+  tf.debugging.check_numerics(x, message='Checking x') #throws an error if x contains a NaN or inf value
+  tf.debugging.check_numerics(y, message='Checking y')
 
   return x, y
 
