@@ -15,13 +15,10 @@ import numpy as np
 import tensorflow_probability as tfp
 import scipy.io as sio
 
-
 gens = tf.random.Generator.from_seed(1234, alg='philox') 
 
 def choose_params(gens):
   #rest or aug?
-  # decide = np.random.randint(2) #a random integer of either 0 or 1
-  # tf.print('tf decide',decide)
 
   #a random dimensionless tensor of either 0 or 1
   uniform_seed=gens.uniform(shape=(1, 1),minval=0, maxval=2, dtype=tf.int32)
@@ -39,22 +36,11 @@ def choose_params(gens):
             accel = (1*ex)+1
     return ex, accel
   ex, accel = zero_or_1(uniform_seed)
-  tf.print('accel',accel)
-
-  # if decide == 0:
-  #   #at rest want a bit of aug to simulate respiratory motion
-  #   ex = np.random.uniform(low=0.0, high=0.15, size=None)
-  #   accel = (1*ex)+1 #up to 2x rest rate
-  # else:
-  #   #at exercise we want augmentation at the upper end of the scale
-  #   ex = np.random.uniform(low=0.3, high=1.0, size=None)
-  #   accel = (1*ex)+1 #up to 2x rest rate
-
-  #ex=0.1 #REMOVE THIS AFTER
-  tf.print('tf ex',ex)
 
   trans_motion_ampli = (6*ex)+0 #6 pixels is max motion. spatial res = 1.67mm
   resp_freq = (1*ex)+0.25 #10-15 breaths/min up to 40-50 breaths/min. A scan is 1.5 seconds. Temp res = 36.4ms
+
+  tf.print('accel',accel,'tf ex',ex,'trans_motion_ampli',trans_motion_ampli,'resp_freq',resp_freq)
   
   return accel, trans_motion_ampli, resp_freq
 
@@ -75,16 +61,16 @@ def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
       with tf.device('/gpu:0'):
           if augment==1:
             imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
-            #x, y = training_augmentation_flow(imagey)
+            #x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            x, y = training_augmentation_flow(imagey)
           else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
   else:
       if augment==1:
             imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
-            #x, y = training_augmentation_flow(imagey)
+            #x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            x, y = training_augmentation_flow(imagey)
       else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
@@ -99,6 +85,7 @@ def training_augmentation_flow_withmotion(y,time_crop=None,trans_motion_ampli=0,
 
     ##################################################### The translation part
 
+    #Making the tensors into dimensionless tesnors
     trans_motion_ampli = trans_motion_ampli[0][0]
     resp_freq = resp_freq[0][0]
 
@@ -235,6 +222,7 @@ def interpolate_in_time_no_RHR(one_data, time_crop=None):
 def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     #Taking 40 frame data and giving it an acceleration factor for heart rate
 
+    #Making the tensor dimensionless
     accel = accel[0][0]
 
     print('augmentation is happening')
