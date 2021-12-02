@@ -20,44 +20,38 @@ gens = tf.random.Generator.from_seed(1234, alg='philox')
 
 def choose_params(gens):
   #rest or aug?
-  decide = np.random.randint(2) #a random integer of either 0 or 1
-  tf.print('tf decide',decide)
+  # decide = np.random.randint(2) #a random integer of either 0 or 1
+  # tf.print('tf decide',decide)
 
-  decide_tf = tf.experimental.numpy.random.randint(100000)
-  tf.print('tf decide_tf',decide_tf)
-
-  decide_tf_2 = tf.experimental.numpy.random.randint(2)
-  tf.print('tf decide_tf_2',decide_tf_2)
-
-  decide_np_2 = np.random.randint(100000)
-  tf.print('tf decide_np_2',decide_np_2)
-
-  seed = gens.make_seeds(1)[0]
-  tf.print('seed',seed)
-
+  #a random dimensionless tensor of either 0 or 1
   uniform_seed=gens.uniform(shape=(1, 1),minval=0, maxval=2, dtype=tf.int32)
-  tf.print('uniform_seed',uniform_seed)
-
   dim_less_uni = uniform_seed[0][0]
-  print('uni seed',dim_less_uni)
+  tf.print('uni seed',dim_less_uni)
 
+  @tf.function
+  def zero_or_1(tensor):
+    for c in tensor:        
+        if tf.equal(c , 0):
+            ex = gens.uniform(shape=(1, 1),minval=0, maxval=0.15, dtype=tf.float32)
+            accel = (1*ex)+1
+        else:
+            ex = gens.uniform(shape=(1, 1),minval=0.3, maxval=1, dtype=tf.float32)
+            accel = (1*ex)+1
+    return ex, accel
+  ex, accel = zero_or_1(uniform_seed)
+  print('ex',ex,'accel',accel)
 
-  if decide == 0:
-    #at rest want a bit of aug to simulate respiratory motion
-    ex = np.random.uniform(low=0.0, high=0.15, size=None)
-    accel = (1*ex)+1 #up to 2x rest rate
-  else:
-    #at exercise we want augmentation at the upper end of the scale
-    ex = np.random.uniform(low=0.3, high=1.0, size=None)
-    #accel = np.random.normal(2,0.5)
-    accel = (1*ex)+1 #up to 2x rest rate
+  # if decide == 0:
+  #   #at rest want a bit of aug to simulate respiratory motion
+  #   ex = np.random.uniform(low=0.0, high=0.15, size=None)
+  #   accel = (1*ex)+1 #up to 2x rest rate
+  # else:
+  #   #at exercise we want augmentation at the upper end of the scale
+  #   ex = np.random.uniform(low=0.3, high=1.0, size=None)
+  #   accel = (1*ex)+1 #up to 2x rest rate
 
   #ex=0.1 #REMOVE THIS AFTER
   tf.print('tf ex',ex)
-
-  #this is how accel was when it worked
-  #accel = np.random.normal(2,0.5)
-  #accel = (1*ex)+1 #up to 2x rest rate
 
   trans_motion_ampli = (6*ex)+0 #6 pixels is max motion. spatial res = 1.67mm
   resp_freq = (1*ex)+0.25 #10-15 breaths/min up to 40-50 breaths/min. A scan is 1.5 seconds. Temp res = 36.4ms
@@ -240,6 +234,8 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
 
     print('augmentation is happening')
     one_data = tf.transpose(one_data, perm=[1, 2, 0]) #make it (192,192,n)
+
+    accel = tf.cast(accel,tf.float64)
     
     one_data_dims = tf.shape(one_data) #(192,192,n)
 
@@ -255,7 +251,7 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     #tensorflow interpolation in time
     x_ref_min = tf.cast(0,tf.float64) #0
     x_ref_max = tf.cast(nFrames_int32-1,tf.float64) #n-1
-    z1 = tf.linspace(0,nFrames_int32-1,num=N) #[0,...,n-1]  N points
+    z1 = tf.linspace(0,nFrames_int32-1,num=N[0][0]) #[0,...,n-1]  N points
 
     grid_dat = tfp.math.interp_regular_1d_grid(tf.cast(z1,tf.float64), x_ref_min, x_ref_max, tf.cast(one_data,tf.float64), axis=-1) #(192,192,6:35) ish
 
@@ -292,7 +288,7 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     return time_crop_rand_start
 
 ####################
-"""
+
 #Quick Test
 import h5py
 import time
@@ -323,4 +319,3 @@ y_np = tf.make_ndarray(tf.make_tensor_proto(y))
 print('x',tf.shape(x),'y',tf.shape(y))
 imgx=np.concatenate((x,y),axis=1)
 PlotUtils.plotVid(imgx,axis=0,vmax=1)
-"""
