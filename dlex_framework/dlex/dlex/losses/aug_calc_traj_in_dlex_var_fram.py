@@ -15,9 +15,33 @@ import numpy as np
 import tensorflow_probability as tfp
 import scipy.io as sio
 
-def choose_params():
+
+gens = tf.random.Generator.from_seed(1234, alg='philox') 
+
+def choose_params(gens):
   #rest or aug?
   decide = np.random.randint(2) #a random integer of either 0 or 1
+  tf.print('tf decide',decide)
+
+  decide_tf = tf.experimental.numpy.random.randint(100000)
+  tf.print('tf decide_tf',decide_tf)
+
+  decide_tf_2 = tf.experimental.numpy.random.randint(2)
+  tf.print('tf decide_tf_2',decide_tf_2)
+
+  decide_np_2 = np.random.randint(100000)
+  tf.print('tf decide_np_2',decide_np_2)
+
+  seed = gens.make_seeds(1)[0]
+  tf.print('seed',seed)
+
+  uniform_seed=gens.uniform(shape=(1, 1),minval=0, maxval=2, dtype=tf.int32)
+  tf.print('uniform_seed',uniform_seed)
+
+  dim_less_uni = uniform_seed[0][0]
+  print('uni seed',dim_less_uni)
+
+
   if decide == 0:
     #at rest want a bit of aug to simulate respiratory motion
     ex = np.random.uniform(low=0.0, high=0.15, size=None)
@@ -25,10 +49,11 @@ def choose_params():
   else:
     #at exercise we want augmentation at the upper end of the scale
     ex = np.random.uniform(low=0.3, high=1.0, size=None)
-    accel = np.random.normal(2,0.5)
+    #accel = np.random.normal(2,0.5)
+    accel = (1*ex)+1 #up to 2x rest rate
 
   #ex=0.1 #REMOVE THIS AFTER
-  print('ex',ex)
+  tf.print('tf ex',ex)
 
   #this is how accel was when it worked
   #accel = np.random.normal(2,0.5)
@@ -43,7 +68,7 @@ def choose_params():
 def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
   
   if augment == 1:
-    accel, trans_motion_ampli, resp_freq = choose_params()
+    accel, trans_motion_ampli, resp_freq = choose_params(gens)
     # accel = 2
     # min_motion = 3
     # max_motion = 3
@@ -56,16 +81,16 @@ def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
       with tf.device('/gpu:0'):
           if augment==1:
             imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-            #x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
-            x, y = training_augmentation_flow(imagey)
+            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            #x, y = training_augmentation_flow(imagey)
           else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
   else:
       if augment==1:
             imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-            #x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
-            x, y = training_augmentation_flow(imagey)
+            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            #x, y = training_augmentation_flow(imagey)
       else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
@@ -247,6 +272,8 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
 
     normed_grid_dat = tf.transpose(normed_grid_dat, perm=[2,0,1]) #(6:35,192,192)
     print('normed_grid_dat',tf.shape(normed_grid_dat))
+
+    tf.print('size of normed_grid_dat',tf.shape(normed_grid_dat))
 
     to_tile = [num_reps_number,1,1] #[3:20,1,1]
     print('to_tile',to_tile)

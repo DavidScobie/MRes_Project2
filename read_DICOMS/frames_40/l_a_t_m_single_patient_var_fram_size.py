@@ -19,10 +19,10 @@ os.environ["CUDA_VISIBLE_DEVICES"]="-1"
 
 #fdata = 'C:\PHD\MRes_project\ML_work\read_DICOMS\data\Royal_Free_SAX_data\RF_full_set_var_temp_len_y_and_x_after_aug'
 
-patient_code = 'GOSH_full_set_var_temp_len_val1x_and_y_RHR_aug_only_ex1'
+patient_code = 'GOSH_full_set_var_temp_len_val1x_and_y_trans_aug_only_ex0p6_smaller_trans'
 #patient_code = 'GOSH_full_set_var_temp_len_val1x_and_y_trans_aug_only_ex1_smaller_trans'
 
-full_filepath = os.path.join("C:/PHD/MRes_project/ML_work/read_DICOMS/data/GOSH_SAX_data/GOSH_variable_RHR_level_x_and_y_val1/",patient_code)
+full_filepath = os.path.join("C:/PHD/MRes_project/ML_work/read_DICOMS/data/GOSH_SAX_data/GOSH_variable_smaller_trans_level_x_and_y_val1/",patient_code)
 #full_filepath = os.path.join("C:/PHD/MRes_project/ML_work/read_DICOMS/frames_40/dlex_augment/GOSH_non_aug_var_fram_size_RHR_only/",patient_code)
 
 fdata = full_filepath + '.mat'
@@ -33,8 +33,9 @@ print(np.shape(y))
 
 x = data['x']
 
-#model = load_model('../../read_DICOMS/frames_40/dlex_augment/GOSH_non_aug_var_fram_size_RHR_only/best_var_fram_size.h5')
-model = load_model('../../read_DICOMS/frames_40/dlex_augment/GOSH_non_aug_var_fram_size_RHR_again_LRsmaller/best_var_fram_size.h5')
+
+model = load_model('../../read_DICOMS/frames_40/dlex_augment/GOSH_var_fram_size/GOSH_non_aug_var_fram_size/LR0p0001_70epo/best_var_fram_size.h5')
+#model = load_model('../../read_DICOMS/frames_40/dlex_augment/GOSH_non_aug_var_fram_size_RHR_and_trans_LR0p00005/best_var_fram_size.h5')
 #model = load_model('../../read_DICOMS/frames_40/dlex_augment/GOSH_non_aug_var_fram_size_same_RHR_as_MAT_check_NaNs/best_var_fram_size.h5')
 #model = load_model('../../read_DICOMS/frames_40/SAX_rest_and_trans_aug_40_y_only_tfft_gridder_tfmr061/model_64.h5')
 model.summary()
