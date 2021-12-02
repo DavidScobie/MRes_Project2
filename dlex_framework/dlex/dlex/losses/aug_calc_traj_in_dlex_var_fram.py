@@ -39,7 +39,7 @@ def choose_params(gens):
             accel = (1*ex)+1
     return ex, accel
   ex, accel = zero_or_1(uniform_seed)
-  print('ex',ex,'accel',accel)
+  tf.print('accel',accel)
 
   # if decide == 0:
   #   #at rest want a bit of aug to simulate respiratory motion
@@ -98,6 +98,9 @@ def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
 def training_augmentation_flow_withmotion(y,time_crop=None,trans_motion_ampli=0,resp_freq=1):
 
     ##################################################### The translation part
+
+    trans_motion_ampli = trans_motion_ampli[0][0]
+    resp_freq = resp_freq[0][0]
 
     print('trans_motion_ampli',trans_motion_ampli)
 
@@ -232,6 +235,8 @@ def interpolate_in_time_no_RHR(one_data, time_crop=None):
 def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     #Taking 40 frame data and giving it an acceleration factor for heart rate
 
+    accel = accel[0][0]
+
     print('augmentation is happening')
     one_data = tf.transpose(one_data, perm=[1, 2, 0]) #make it (192,192,n)
 
@@ -251,7 +256,7 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     #tensorflow interpolation in time
     x_ref_min = tf.cast(0,tf.float64) #0
     x_ref_max = tf.cast(nFrames_int32-1,tf.float64) #n-1
-    z1 = tf.linspace(0,nFrames_int32-1,num=N[0][0]) #[0,...,n-1]  N points
+    z1 = tf.linspace(0,nFrames_int32-1,num=N) #[0,...,n-1]  N points
 
     grid_dat = tfp.math.interp_regular_1d_grid(tf.cast(z1,tf.float64), x_ref_min, x_ref_max, tf.cast(one_data,tf.float64), axis=-1) #(192,192,6:35) ish
 
@@ -288,7 +293,7 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     return time_crop_rand_start
 
 ####################
-
+"""
 #Quick Test
 import h5py
 import time
@@ -319,3 +324,4 @@ y_np = tf.make_ndarray(tf.make_tensor_proto(y))
 print('x',tf.shape(x),'y',tf.shape(y))
 imgx=np.concatenate((x,y),axis=1)
 PlotUtils.plotVid(imgx,axis=0,vmax=1)
+"""
