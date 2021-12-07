@@ -28,7 +28,7 @@ number_files = len(list)
 # number_files = 4
 print(number_files)
 
-model = load_model('../../read_DICOMS/frames_40/dlex_augment/GOSH_non_aug_var_fram_size_same_trans_only_bs4_check_GPU_mem_usage/best_var_fram_size.h5')
+model = load_model('../../read_DICOMS/frames_40/dlex_augment/GOSH_non_aug_var_fram_size_trans_tens_logic_mse_only_20211205_155036/best_var_fram_size.h5')
 #model = load_model('../../read_DICOMS/frames_40/dlex_augment/Royal_Free_aug_trans_var_ex_rate/var_fram_size/with_augment/70epo/best_good_inp_size.h5')
 model.summary()
 
@@ -97,7 +97,7 @@ test_pred_np = tf.make_ndarray(tf.make_tensor_proto(test_pred))
 PlotUtils.plotVid(np.squeeze(low_res_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 PlotUtils.plotVid(np.squeeze(test_pred_np[6,:,:,:]),vmin=0,vmax=1,axis=0)
 
-#sio.savemat('GOSH_non_aug_var_fram_size_same_RHR_as_MAT_check_NaNs_rest_prosp.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
+sio.savemat('GOSH_non_aug_var_fram_size_trans_tens_logic_mse_only_20211205_155036_ex3_prosp.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
 #sio.savemat('GOSH_non_aug_var_fram_size_same_trans_only_bs4_check_GPU_mem_usage_ex3_prosp_sorted.mat',{'low_res_DICOM':low_res_np, 'model_recon':test_pred_np}) #you can save as many arrays as you want
 
 plt.show()

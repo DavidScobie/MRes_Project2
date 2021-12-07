@@ -28,11 +28,11 @@ def choose_params(gens):
   @tf.function
   def zero_or_1(tensor):
     for c in tensor:        
-        if tf.equal(c , 0):
-            ex = gens.uniform(shape=(1, 1),minval=0, maxval=0.15, dtype=tf.float32)
-            accel = (1*ex)+1
-        else:
-            ex = gens.uniform(shape=(1, 1),minval=0.3, maxval=1, dtype=tf.float32)
+        if tf.equal(c , 0): #rest case
+            ex = gens.uniform(shape=(1, 1),minval=0, maxval=0.15, dtype=tf.float32) #want a bit of respiratory motion
+            accel = (1*ex)+(1-ex) #dont want any raised heart rate
+        else: #exercise case
+            ex = gens.uniform(shape=(1, 1),minval=0.3, maxval=1, dtype=tf.float32) #want more respiratory motion and raised heart rate
             accel = (1*ex)+1
     return ex, accel
   ex, accel = zero_or_1(uniform_seed)
@@ -60,23 +60,27 @@ def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
   if gpu==1:
       with tf.device('/gpu:0'):
           if augment==1:
+            #imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-            #x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
-            x, y = training_augmentation_flow(imagey)
+            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            #x, y = training_augmentation_flow(imagey)
           else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
   else:
       if augment==1:
+            #imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
-            #x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
-            x, y = training_augmentation_flow(imagey)
+            x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) #CHANGE AFTER
+            #x, y = training_augmentation_flow(imagey)
       else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
 
   tf.debugging.check_numerics(x, message='Checking x') #throws an error if x contains a NaN or inf value
   tf.debugging.check_numerics(y, message='Checking y')
+
+  #tf.debugging.enable_check_numerics() #check for inf or NaN anywhere in dlex
 
   return x, y
 
@@ -246,7 +250,17 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     x_ref_max = tf.cast(nFrames_int32-1,tf.float64) #n-1
     z1 = tf.linspace(0,nFrames_int32-1,num=N) #[0,...,n-1]  N points
 
-    grid_dat = tfp.math.interp_regular_1d_grid(tf.cast(z1,tf.float64), x_ref_min, x_ref_max, tf.cast(one_data,tf.float64), axis=-1) #(192,192,6:35) ish
+    print('z1 before',z1)
+
+    z1_first_bit = z1[:-1]
+
+    print('z1 new after',z1_first_bit)
+
+    z1_comb = tf.experimental.numpy.hstack((z1_first_bit,x_ref_max))  
+
+    print('z1 comb ',z1_comb)
+
+    grid_dat = tfp.math.interp_regular_1d_grid(tf.cast(z1_comb,tf.float64), x_ref_min, x_ref_max, tf.cast(one_data,tf.float64), axis=-1) #(192,192,6:35) ish
 
     del one_data
 
