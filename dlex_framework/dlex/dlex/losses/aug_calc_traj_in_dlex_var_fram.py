@@ -76,12 +76,12 @@ def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
       else:
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
+  
+  #tf.debugging.check_numerics(x, message='Checking x') #throws an error if x contains a NaN or inf value
+  #tf.debugging.check_numerics(y, message='Checking y')
 
-  tf.debugging.check_numerics(x, message='Checking x') #throws an error if x contains a NaN or inf value
-  tf.debugging.check_numerics(y, message='Checking y')
-
-  #tf.debugging.enable_check_numerics() #check for inf or NaN anywhere in dlex
-
+  tf.debugging.enable_check_numerics() #check for inf or NaN anywhere in dlex
+  
   return x, y
 
 
@@ -93,7 +93,7 @@ def training_augmentation_flow_withmotion(y,time_crop=None,trans_motion_ampli=0,
     trans_motion_ampli = trans_motion_ampli[0][0]
     resp_freq = resp_freq[0][0]
 
-    print('trans_motion_ampli',trans_motion_ampli)
+    #print('trans_motion_ampli',trans_motion_ampli)
 
     displacement=[]
     for idxdisp in range(time_crop): #40
@@ -115,7 +115,7 @@ def training_augmentation_flow_withmotion(y,time_crop=None,trans_motion_ampli=0,
     Zeros = tf.expand_dims(Zeros,1)
     transform = tf.experimental.numpy.hstack((Zeros,transform))  
     del Zeros
-    print('y pre trans',tf.shape(y))
+    #print('y pre trans',tf.shape(y))
     y=tf.expand_dims(y, axis=3)
 
     y=tfa.image.translate(y,tf.cast(transform[:-1,:],tf.float32),'bilinear' ) #image:y. transaltion:transform. interpolation mode: bilinear
@@ -146,7 +146,7 @@ def training_augmentation_flow_withmotion(y,time_crop=None,trans_motion_ampli=0,
     del traj
     del dcw_kspace
 
-    print('y after x und',tf.shape(y),'x after x und',tf.shape(x))
+    #print('y after x und',tf.shape(y),'x after x und',tf.shape(x))
     x=tf.expand_dims(x,axis=-1) #making it (40,192,192,1) to work with training
 
     y = (y - tf.cast(tf.reduce_min(tf.abs(y)),dtype=y.dtype)) / (tf.cast(tf.reduce_max(tf.abs(y)),dtype=y.dtype) - tf.cast(tf.reduce_min(tf.abs(y)),dtype=y.dtype))
@@ -202,24 +202,24 @@ def interpolate_in_time_no_RHR(one_data, time_crop=None):
 
     print('augmentation not happening')
 
-    print('one_data',tf.shape(one_data))
+    #print('one_data',tf.shape(one_data))
     #Finding how many we need to repeat matrix by
     one_dat_dims = tf.shape(one_data) #(15:25,192,192)
     one_dat_frames = tf.cast(one_dat_dims[0],tf.int32) #(15:25)
     num_reps_number = tf.cast(((4*time_crop)/one_dat_frames),tf.int32) #6:11
-    print('num_reps_number',num_reps_number)
+    #print('num_reps_number',num_reps_number)
 
     #tiling out the matrix
     to_tile = [1*(num_reps_number),1,1] #[6:11,1,1]
     rep_normed_grid_dat_2  = tf.tile(one_data,to_tile) # approx (160,192,192)
-    print('rep_normed_grid_dat_2',tf.shape(rep_normed_grid_dat_2))
+    #print('rep_normed_grid_dat_2',tf.shape(rep_normed_grid_dat_2))
     del one_data
 
     #choosing random starting frame
     rand_start_frame = tf.experimental.numpy.random.randint(0,high = time_crop - 1) #0 to 39 some number
     #rand_start_frame = 0
     time_crop_rand_start = rep_normed_grid_dat_2[rand_start_frame:rand_start_frame + time_crop, :, :] # (40,192,192)
-    print('time_crop_rand_start shape',tf.shape(time_crop_rand_start))
+    #print('time_crop_rand_start shape',tf.shape(time_crop_rand_start))
     return time_crop_rand_start
 
 
@@ -250,17 +250,58 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     x_ref_max = tf.cast(nFrames_int32-1,tf.float64) #n-1
     z1 = tf.linspace(0,nFrames_int32-1,num=N) #[0,...,n-1]  N points
 
-    print('z1 before',z1)
+    #print('z1 before',z1)
 
-    z1_first_bit = z1[:-1]
+    z1_first_bit = z1[1:-1]
 
-    print('z1 new after',z1_first_bit)
+    #print('z1 new after',z1_first_bit)
 
-    z1_comb = tf.experimental.numpy.hstack((z1_first_bit,x_ref_max))  
+    z1_comb = tf.experimental.numpy.hstack((x_ref_min, z1_first_bit,x_ref_max))  
 
-    print('z1 comb ',z1_comb)
+    tf.print('z1_comb',z1_comb)
+    tf.print('size of one data',tf.shape(one_data))
+    #tf.print('one_data',one_data)
+
+    #check whether the z1_comb values are equal to or inside range of x_ref_min and x_ref_max
+    @tf.function
+    def above(tensor):
+      for c in tensor:        
+          if tf.greater_equal(c , x_ref_min):
+              pass
+          else: #exercise case
+              tf.print('time values do not begin at zero of interpolation range!')
+    above(z1_comb)    
+
+    @tf.function
+    def below(tensor):
+      for c in tensor:        
+          if tf.less_equal(c , x_ref_max):
+              pass
+          else: #exercise case
+              tf.print('time values do not end at top of interpolation range!')
+    below(z1_comb)    
+
+    tf.debugging.disable_check_numerics() #stop the debugging process occuring
 
     grid_dat = tfp.math.interp_regular_1d_grid(tf.cast(z1_comb,tf.float64), x_ref_min, x_ref_max, tf.cast(one_data,tf.float64), axis=-1) #(192,192,6:35) ish
+    #tf.debugging.check_numerics(grid_dat, message='Checking grid_dat') #throws an error if grid_dat contains a NaN or inf value
+
+    tf.debugging.enable_check_numerics() #restart the debugging process
+
+    #finding if there are NaN and inf, and if so, how many?
+    where_nans = tf.math.is_nan(grid_dat)
+    tf.print('are there nans?',tf.math.reduce_max(tf.cast(where_nans, tf.float32)))
+    tf.print('how many nans?',tf.math.reduce_sum(tf.cast(where_nans, tf.float32)))
+
+    where_infs = tf.math.is_inf(grid_dat)
+    tf.print('are there infs?',tf.math.reduce_max(tf.cast(where_infs, tf.float32)))
+    tf.print('how many infs?',tf.math.reduce_sum(tf.cast(where_infs, tf.float32)))
+
+    #checking if the NaN checker actually works
+    has_nans = tf.constant([float('NaN'), float('NaN'), 3.])
+    where_nans_test = tf.math.is_nan(has_nans)
+    tf.print('test: are there nans?',tf.math.reduce_max(tf.cast(where_nans_test, tf.float32)))
+    tf.print('test: how many nans?',tf.math.reduce_sum(tf.cast(where_nans_test, tf.float32)))
 
     del one_data
 
@@ -274,15 +315,15 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     del grid_dat
 
     normed_grid_dat = tf.transpose(normed_grid_dat, perm=[2,0,1]) #(6:35,192,192)
-    print('normed_grid_dat',tf.shape(normed_grid_dat))
+    #print('normed_grid_dat',tf.shape(normed_grid_dat))
 
     tf.print('size of normed_grid_dat',tf.shape(normed_grid_dat))
 
     to_tile = [num_reps_number,1,1] #[3:20,1,1]
-    print('to_tile',to_tile)
+    #print('to_tile',to_tile)
 
     rep_normed_grid_dat  = tf.tile(normed_grid_dat,to_tile) # approx (120,192,192). Can be (108:120,192,192)
-    print('rep_normed_grid_dat',tf.shape(rep_normed_grid_dat))
+    #print('rep_normed_grid_dat',tf.shape(rep_normed_grid_dat))
     del normed_grid_dat
 
     #giving data a random starting frame
@@ -290,7 +331,7 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
     #rand_start_frame = 0
     time_crop_rand_start = rep_normed_grid_dat[rand_start_frame:rand_start_frame + time_crop, :, :] #[40,192,192]
     del rep_normed_grid_dat
-    print('time_crop_rand_start shape',tf.shape(time_crop_rand_start))
+    #print('time_crop_rand_start shape',tf.shape(time_crop_rand_start))
 
     return time_crop_rand_start
 
