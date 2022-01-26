@@ -1,10 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Created on Mon Aug 16 10:36:21 2021
-Data augmentation function for David 
-@author: oj20
-"""
+
 import tensorflow as tf
 import tensorflow_addons as tfa
 import math
@@ -14,7 +10,7 @@ import numpy as np
 import tensorflow_probability as tfp
 import scipy.io as sio
 
-gens = tf.random.Generator.from_seed(1234, alg='philox') 
+gens = tf.random.Generator.from_seed(1234, alg='philox') #random seed generator for randomly augmenting some data and not others
 
 def choose_params(gens):
   #thia function chooses the parametres defining the amount of augmentation
@@ -22,7 +18,7 @@ def choose_params(gens):
   #a random dimensionless tensor of either 0 or 1
   uniform_seed=gens.uniform(shape=(1, 1),minval=0, maxval=2, dtype=tf.int32)
 
-  #this function has a rest and exercise case for the parameters of augmentation
+  #this function makes a rest and exercise case for the parameters of augmentation
   @tf.function
   def zero_or_1(tensor):
     for c in tensor:        
@@ -30,15 +26,13 @@ def choose_params(gens):
             ex = gens.uniform(shape=(1, 1),minval=0, maxval=0.15, dtype=tf.float32) #want a bit of respiratory motion
             accel = (1*ex)+(1-ex) #dont want any raised heart rate
         else: #exercise case
-            ex = gens.uniform(shape=(1, 1),minval=0.3, maxval=1, dtype=tf.float32) #want more respiratory motion and raised heart rate
+            ex = gens.uniform(shape=(1, 1),minval=0.3, maxval=1, dtype=tf.float32) #want more respiratory motion
             accel = (1*ex)+1 #want a raised heart rate
     return ex, accel
   ex, accel = zero_or_1(uniform_seed)
 
   trans_motion_ampli = (6*ex)+0 #6 pixels is maximum motion. spatial res = 1.67mm
   resp_freq = (1*ex)+0.25 #10-15 breaths/min up to 40-50 breaths/min. A scan is 1.5 seconds. Temp res = 36.4ms
-
-  #tf.print('accel',accel,'tf ex',ex,'trans_motion_ampli',trans_motion_ampli,'resp_freq',resp_freq)
   
   return accel, trans_motion_ampli, resp_freq
 
@@ -53,20 +47,21 @@ def wrapper_augment(imagex,imagey,gpu=1,time_crop=None,augment=1):
       
   if gpu==1:   #access the gpu
       with tf.device('/gpu:0'):   
-          if augment==1:    
+          if augment==1:    #exercise case
             imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
             x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) 
-          else:     
+          else:     #rest case
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
   else:    #dont access the gpu
-      if augment==1:      
+      if augment==1:     #exercise case 
             imagey = interpolate_in_time_with_RHR(imagey, accel = accel, time_crop=time_crop)
             x, y = training_augmentation_flow_withmotion(imagey,time_crop=time_crop,trans_motion_ampli=trans_motion_ampli,resp_freq=resp_freq) 
-      else:
+      else:       #rest case
             imagey = interpolate_in_time_no_RHR(imagey, time_crop=time_crop)
             x, y = training_augmentation_flow(imagey)
   
+  #for debugging
   #tf.debugging.check_numerics(x, message='Checking x') #throws an error if x contains a NaN or inf value
   #tf.debugging.check_numerics(y, message='Checking y')
 
@@ -83,30 +78,29 @@ def training_augmentation_flow_withmotion(y,time_crop=None,trans_motion_ampli=0,
     trans_motion_ampli = trans_motion_ampli[0][0]
     resp_freq = resp_freq[0][0]
 
-    #print('trans_motion_ampli',trans_motion_ampli)
-
     displacement=[]
-    for idxdisp in range(time_crop): #40
-        if idxdisp%40==0:               
+    for idxdisp in range(time_crop): 
+        if idxdisp%40==0:       #time_crop=40      
             transform = trans_motion_ampli  #the amplitude for the first time point
         sin_point = tf.cast(transform,tf.float32)*tf.math.sin((idxdisp/(time_crop/resp_freq))*2*tf.constant(math.pi)) #sinusoidal translation. max of 1cm translation at peak exercise
         if idxdisp==0:
             displacement.append(tf.cast([[[0]],[[0]]],tf.float32)) #defining the first value in the translation
 
-        displacement.append(tf.cast([[[sin_point]],[[sin_point]]],tf.float32))
+        displacement.append(tf.cast([[[sin_point]],[[sin_point]]],tf.float32))       #making the sinusoidal translation distribution
 
+    #getting the displacement to be the right size
     displacement=tf.stack(displacement) 
     transform=tf.squeeze(displacement) 
     del displacement
     transform = transform[:,0]
     
+    #the following steps ensure transltion is up and down, and not in any other direction
     Zeros = tf.zeros((tf.shape(transform)[0]))
     transform = tf.expand_dims(transform,1)
     Zeros = tf.expand_dims(Zeros,1)
     transform = tf.experimental.numpy.hstack((Zeros,transform))  
     del Zeros
     y=tf.expand_dims(y, axis=3)
-
     y=tfa.image.translate(y,tf.cast(transform[:-1,:],tf.float32),'bilinear' ) #image:y. transaltion:transform. interpolation mode: bilinear
     del transform
 
@@ -116,20 +110,23 @@ def training_augmentation_flow_withmotion(y,time_crop=None,trans_motion_ampli=0,
     
     x=tf.squeeze(x) #make it acceptable for tfft.nufft   (40,192,192)
 
+    #making the trajectory and the kspace
     traj = tfmr.radial_trajectory(192, views=13, phases=40, ordering='tiny_half', angle_range='full', readout_os=2.0) #(40, 13, 384, 2) 
     traj = tf.reshape(traj, [traj.shape[0], traj.shape[1]*traj.shape[2] , traj.shape[3]]) #(40, 4992,2)
     kspace = tfft.nufft(tf.cast(x,tf.complex64), traj,transform_type='type_2', fft_direction='forward') #(40,4992)
     kspace = tf.reshape(kspace, [1 , -1]) #(1,199680)    
 
+    #making the density compensation weights
     radial_weights = tfmr.radial_density(192, views=13, phases=40, ordering='tiny_half', angle_range='full', readout_os=2.0) #(40,13,384)
     radial_weights = tf.reshape(radial_weights,[traj.shape[0], traj.shape[1]]) #(40,4992)
     radial_weights = tf.reshape(radial_weights, [1 , -1]) #(1,199680)
 
+    #divide kspace by the weights
     dcw_kspace = kspace / tf.cast(radial_weights,dtype=tf.complex64) #(1,199680)  
 
     del kspace
     del radial_weights
-    dcw_kspace = tf.reshape(dcw_kspace, [40 , 4992])  
+    dcw_kspace = tf.reshape(dcw_kspace, [40 , 4992]) #reshaping for tfft.nufft  
 
     x = tfft.nufft(dcw_kspace, traj, grid_shape=(192,192), transform_type='type_1', fft_direction='backward') #(40,192,192)
     del traj
@@ -137,9 +134,11 @@ def training_augmentation_flow_withmotion(y,time_crop=None,trans_motion_ampli=0,
 
     x=tf.expand_dims(x,axis=-1) #making it (40,192,192,1) to work with training
 
+    #normalising x and y
     y = (y - tf.cast(tf.reduce_min(tf.abs(y)),dtype=y.dtype)) / (tf.cast(tf.reduce_max(tf.abs(y)),dtype=y.dtype) - tf.cast(tf.reduce_min(tf.abs(y)),dtype=y.dtype))
     x = (x - tf.cast(tf.reduce_min(tf.abs(x)),dtype=x.dtype)) / (tf.cast(tf.reduce_max(tf.abs(x)),dtype=x.dtype) - tf.cast(tf.reduce_min(tf.abs(x)),dtype=x.dtype))
     
+    #take absolute values
     y=tf.math.abs(y)
     x=tf.math.abs(x)
 
@@ -153,12 +152,13 @@ def training_augmentation_flow(y):
     
     x=tf.squeeze(x) #make it acceptable for tfft.nufft   (40,192,192)
 
+    #making the trajectory and the kspace
     traj = tfmr.radial_trajectory(192, views=13, phases=40, ordering='tiny_half', angle_range='full', readout_os=2.0) #(40, 13, 384, 2) 
-
     traj = tf.reshape(traj, [traj.shape[0], traj.shape[1]*traj.shape[2] , traj.shape[3]]) #(40, 4992,2)
     kspace = tfft.nufft(tf.cast(x,tf.complex64), traj,transform_type='type_2', fft_direction='forward') #(40,4992)
     kspace = tf.reshape(kspace, [1 , -1]) #(1,199680)    
 
+    #making the density compensation weights
     radial_weights = tfmr.radial_density(192, views=13, phases=40, ordering='tiny_half', angle_range='full', readout_os=2.0) #(40,13,384)
     radial_weights = tf.reshape(radial_weights,[traj.shape[0], traj.shape[1]]) #(40,4992)
     radial_weights = tf.reshape(radial_weights, [1 , -1]) #(1,199680)
@@ -167,7 +167,7 @@ def training_augmentation_flow(y):
 
     del kspace
     del radial_weights
-    dcw_kspace = tf.reshape(dcw_kspace, [40 , 4992])  
+    dcw_kspace = tf.reshape(dcw_kspace, [40 , 4992])  #reshaping for tfft.nufft 
 
     x = tfft.nufft(dcw_kspace, traj, grid_shape=(192,192), transform_type='type_1', fft_direction='backward') #(40,192,192)
     del traj
@@ -176,9 +176,11 @@ def training_augmentation_flow(y):
     y=tf.expand_dims(y,axis=-1) #making it (40,192,192,1) to work with training
     x=tf.expand_dims(x,axis=-1) #making it (40,192,192,1) to work with training
 
+    #normalising x and y
     y = (y - tf.cast(tf.reduce_min(tf.abs(y)),dtype=y.dtype)) / (tf.cast(tf.reduce_max(tf.abs(y)),dtype=y.dtype) - tf.cast(tf.reduce_min(tf.abs(y)),dtype=y.dtype))
     x = (x - tf.cast(tf.reduce_min(tf.abs(x)),dtype=x.dtype)) / (tf.cast(tf.reduce_max(tf.abs(x)),dtype=x.dtype) - tf.cast(tf.reduce_min(tf.abs(x)),dtype=x.dtype))
     
+    #take absolute values
     y=tf.math.abs(y)
     x=tf.math.abs(x)
 
@@ -186,7 +188,7 @@ def training_augmentation_flow(y):
 
 
 def interpolate_in_time_no_RHR(one_data, time_crop=None):
-    #Taking variable frame number data. Tiling to many frames and picking a window of 40 frames at random start point.
+    #Taking data with a variable number of temporal frames. Tiling to many frames and picking a window of 40 frames at random start point.
 
     print('augmentation not happening')
 
@@ -201,13 +203,13 @@ def interpolate_in_time_no_RHR(one_data, time_crop=None):
     del one_data
 
     #choosing random starting frame
-    rand_start_frame = tf.experimental.numpy.random.randint(0,high = time_crop - 1) #0 to 39 some number
+    rand_start_frame = tf.experimental.numpy.random.randint(0,high = time_crop - 1) #random number from 0 to 39
     time_crop_rand_start = rep_normed_grid_dat_2[rand_start_frame:rand_start_frame + time_crop, :, :] # (40,192,192)
     return time_crop_rand_start
 
 
 def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
-    #Taking 40 frame data and giving it an acceleration factor for heart rate
+    #Taking data with variable number of temporal frames. Interpolating in time by a random acceleration factor. Then tiling to 40 frames and picking random starting frame
 
     #Making the tensor dimensionless
     accel = accel[0][0]
@@ -268,7 +270,7 @@ def interpolate_in_time_with_RHR(one_data, accel = 1, time_crop=None):
 
 ####################
 """
-#Quick Test
+#Quick Test to see how the augmentation looks
 import h5py
 import time
 import PlotUtils
